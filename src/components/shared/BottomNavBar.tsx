@@ -18,8 +18,8 @@ export default function BottomNavBar() {
   const pathname = usePathname();
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 bg-card border-t border-border/80 shadow-[0_-1px_4px_rgba(0,0,0,0.05)]">
-      <nav className="flex justify-around items-center h-16 max-w-md mx-auto">
+    <footer className="fixed bottom-4 left-4 right-4 z-50">
+      <nav className="max-w-md mx-auto flex justify-around items-center h-16 bg-card/95 backdrop-blur-sm border border-border/80 rounded-full shadow-lg">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           if (item.icon === 'siri') {
