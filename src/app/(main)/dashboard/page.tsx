@@ -1,0 +1,17 @@
+import WelcomeHeader from "@/components/dashboard/WelcomeHeader";
+import DashboardMetrics from "@/components/dashboard/DashboardMetrics";
+import UpcomingSession from "@/components/dashboard/UpcomingSession";
+import MedicationReminders from "@/components/dashboard/MedicationReminders";
+
+export default function DashboardPage() {
+  return (
+    <div className="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
+      <div className="space-y-8">
+        <WelcomeHeader />
+        <DashboardMetrics />
+        <UpcomingSession />
+        <MedicationReminders />
+      </div>
+    </div>
+  );
+}
