@@ -9,7 +9,7 @@ export default function WelcomeHeader() {
     <div className="flex justify-between items-center">
       <div>
         <h1 className="text-2xl sm:text-3xl font-headline font-bold text-foreground">
-          Good Morning, Alex
+          Good Morning, Victor
         </h1>
         <p className="text-muted-foreground mt-1">
           Ready to start your day with mindfulness?
@@ -19,7 +19,7 @@ export default function WelcomeHeader() {
         {userAvatar && (
             <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint} />
         )}
-        <AvatarFallback>AX</AvatarFallback>
+        <AvatarFallback>VC</AvatarFallback>
       </Avatar>
     </div>
   );
