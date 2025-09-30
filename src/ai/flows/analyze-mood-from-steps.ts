@@ -1,3 +1,4 @@
+
 // This file is machine-generated - edit with care!
 
 'use server';
@@ -26,8 +27,7 @@ const AnalyzeMoodFromStepsOutputSchema = z.object({
   mood: z
     .string()
     .describe(
-      'The analyzed mood of the user, based on their step count. Should be a short summary of the users mood.
-      ' + 'For example: "The user is likely feeling energetic and positive due to their high activity level."'      
+      `The analyzed mood of the user, based on their step count. Should be a short summary of the users mood. For example: "The user is likely feeling energetic and positive due to their high activity level."`
     ),
   confidence: z
     .number()
