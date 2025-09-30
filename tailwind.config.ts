@@ -85,10 +85,25 @@ export default {
             height: '0',
           },
         },
+        'siri-1': {
+            '0%, 100%': { transform: 'scaleY(0.2)' },
+            '50%': { transform: 'scaleY(1)' },
+        },
+        'siri-2': {
+            '0%, 100%': { transform: 'scaleY(0.5)' },
+            '50%': { transform: 'scaleY(1)' },
+        },
+        'siri-3': {
+            '0%, 100%': { transform: 'scaleY(0.8)' },
+            '50%': { transform: 'scaleY(0.2)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'siri-1': 'siri-1 1s ease-in-out infinite',
+        'siri-2': 'siri-2 1s ease-in-out infinite 0.2s',
+        'siri-3': 'siri-3 1s ease-in-out infinite 0.4s',
       },
     },
   },

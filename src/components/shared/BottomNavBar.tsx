@@ -2,15 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Smile, ClipboardList, MessageCircle, Mic, User } from 'lucide-react';
+import { Home, Smile, ClipboardList, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import SiriWave from './SiriWave';
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/mood', label: 'Mood', icon: Smile },
+  { href: '/therapy', label: 'Therapy', icon: 'siri' },
   { href: '/activities', label: 'Activities', icon: ClipboardList },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
-  { href: '/therapy', label: 'Therapy', icon: Mic },
 ];
 
 export default function BottomNavBar() {
@@ -21,6 +22,20 @@ export default function BottomNavBar() {
       <nav className="flex justify-around items-center h-16 max-w-md mx-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
+          if (item.icon === 'siri') {
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center justify-center w-16 h-16 -translate-y-4 bg-card rounded-full shadow-lg border-2 border-primary"
+              >
+                <SiriWave isActive={isActive} />
+              </Link>
+            );
+          }
+
+          const Icon = item.icon;
+
           return (
             <Link
               key={item.href}
@@ -30,7 +45,7 @@ export default function BottomNavBar() {
                 isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />
+              <Icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />
               <span className="text-xs font-medium">{item.label}</span>
             </Link>
           );
