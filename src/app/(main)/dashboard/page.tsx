@@ -1,6 +1,6 @@
 import WelcomeHeader from "@/components/dashboard/WelcomeHeader";
 import DashboardMetrics from "@/components/dashboard/DashboardMetrics";
-import UpcomingSession from "@/components/dashboard/UpcomingSession";
+import ScheduledSessions from "@/components/dashboard/ScheduledSessions";
 import MedicationReminders from "@/components/dashboard/MedicationReminders";
 
 export default function DashboardPage() {
@@ -9,7 +9,7 @@ export default function DashboardPage() {
       <div className="space-y-8">
         <WelcomeHeader />
         <DashboardMetrics />
-        <UpcomingSession />
+        <ScheduledSessions />
         <MedicationReminders />
       </div>
     </div>

@@ -23,3 +23,9 @@ export interface ChatMessage {
 export interface MoodBooster {
   text: string;
 }
+
+export interface ScheduledSession {
+  id: string;
+  date: string;
+  time: string;
+}
