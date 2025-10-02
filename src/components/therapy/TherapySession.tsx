@@ -8,20 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Mic, MicOff, PhoneOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DisclaimerDialog from "./DisclaimerDialog";
-
-// Mock AI responses
-const aiResponses = [
-  "That's a very interesting point. Could you tell me more about how that felt?",
-  "I understand. It sounds like that was a challenging situation for you.",
-  "Thank you for sharing that with me. What was going through your mind at that moment?",
-  "Let's explore that a bit further. How does that connect to what we discussed earlier?",
-  "I hear you. It's completely valid to feel that way.",
-  "What do you think you can learn from this experience?",
-];
+import { therapyConversation } from "@/ai/flows/therapy-conversation";
 
 type TranscriptItem = {
   speaker: "user" | "ai";
   text: string;
+};
+
+type HistoryItem = {
+  role: 'user' | 'model';
+  content: { text: string }[];
 };
 
 export default function TherapySession() {
@@ -30,24 +26,51 @@ export default function TherapySession() {
   const [isListening, setIsListening] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
 
   const aiAvatar = PlaceHolderImages.find((p) => p.id === "therapy-session-ai");
 
   useEffect(() => {
     setIsMounted(true);
+    audioRef.current = new Audio();
   }, []);
 
-  const handleSpeech = (text: string) => {
+  const handleSpeech = async (text: string) => {
+    if (!text) return;
     setTranscript((prev) => [...prev, { speaker: "user", text }]);
-    // Mock AI response
-    setTimeout(() => {
-      const response = aiResponses[Math.floor(Math.random() * aiResponses.length)];
-      speak(response);
-    }, 1000);
+    
+    const newHistory: HistoryItem[] = [...history, { role: 'user', content: [{ text }] }];
+    setHistory(newHistory);
+    
+    setIsAiSpeaking(true);
+    try {
+      const result = await therapyConversation({ history: newHistory, message: text });
+      playAudio(result.audio);
+      setTranscript((prev) => [...prev, { speaker: "ai", text: result.response }]);
+      setHistory((prev) => [...prev, { role: 'model', content: [{ text: result.response }] }]);
+    } catch (error) {
+      console.error("Error with therapy conversation flow:", error);
+      const errorMessage = "I'm having a little trouble connecting right now. Please give me a moment.";
+      speak(errorMessage);
+      setTranscript((prev) => [...prev, { speaker: "ai", text: errorMessage }]);
+    } finally {
+      setIsAiSpeaking(false);
+    }
   };
   
+  const playAudio = (audioDataUri: string) => {
+    if (audioRef.current) {
+        audioRef.current.src = audioDataUri;
+        audioRef.current.play();
+        audioRef.current.onended = () => {
+            setIsAiSpeaking(false);
+        };
+    }
+  };
+
   const speak = (text: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
 
@@ -57,16 +80,17 @@ export default function TherapySession() {
       setIsAiSpeaking(false);
     };
     setTranscript((prev) => [...prev, { speaker: "ai", text }]);
+    setHistory((prev) => [...prev, { role: 'model', content: [{ text }] }]);
     window.speechSynthesis.speak(utterance);
   };
 
   const toggleListen = () => {
+    if (!recognitionRef.current) return;
     if (isListening) {
-      recognitionRef.current?.stop();
+      recognitionRef.current.stop();
     } else {
-      recognitionRef.current?.start();
+      recognitionRef.current.start();
     }
-    setIsListening(!isListening);
   };
 
   useEffect(() => {
@@ -81,23 +105,45 @@ export default function TherapySession() {
     recognitionRef.current.interimResults = false;
     recognitionRef.current.lang = "en-US";
 
+    let finalTranscript = '';
     recognitionRef.current.onresult = (event) => {
-      const speechToText = event.results[event.results.length - 1][0].transcript;
-      handleSpeech(speechToText);
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            } else {
+                interimTranscript += event.results[i][0].transcript;
+            }
+        }
+        // We will only handle speech when the user stops talking
     };
 
     recognitionRef.current.onstart = () => setIsListening(true);
-    recognitionRef.current.onend = () => setIsListening(false);
+    
+    recognitionRef.current.onend = () => {
+        setIsListening(false);
+        handleSpeech(finalTranscript);
+        finalTranscript = '';
+    };
+
+    recognitionRef.current.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+    };
     
     // Auto start listening after disclaimer
     if (!showDisclaimer) {
         speak("Hello, I'm here to listen. How are you feeling today?");
-        toggleListen();
+        // Don't auto-toggle listen, let user initiate
     }
 
     return () => {
       recognitionRef.current?.stop();
       window.speechSynthesis?.cancel();
+      if(audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDisclaimer]);
@@ -140,7 +186,7 @@ export default function TherapySession() {
       <div className="bg-black/50 p-6 flex justify-center items-center gap-8">
         <Button onClick={toggleListen} size="lg" className={cn(
             "rounded-full w-20 h-20 transition-colors",
-            isListening ? "bg-white text-black hover:bg-gray-200" : "bg-gray-700 hover:bg-gray-600"
+            isListening ? "bg-red-500 hover:bg-red-600" : "bg-gray-700 hover:bg-gray-600"
         )}>
             {isListening ? <MicOff className="h-8 w-8"/> : <Mic className="h-8 w-8"/>}
         </Button>
