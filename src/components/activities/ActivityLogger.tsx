@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { summarizeActivityLogs, SummarizeActivityLogsOutput } from "@/ai/flows/summarize-activity-logs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Wand2 } from "lucide-react";
+import { Loader2, Wand2, Mic, MicOff } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 export default function ActivityLogger() {
   const [activityLog, setActivityLog] = useState("");
@@ -16,6 +17,70 @@ export default function ActivityLogger() {
   const [summary, setSummary] = useState<SummarizeActivityLogsOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("webkitSpeechRecognition" in window)) {
+      console.log("Speech recognition not supported");
+      return;
+    }
+
+    const SpeechRecognition = window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+      let finalTranscript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      setActivityLog(prev => prev + finalTranscript);
+    };
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            toast({
+                title: "Microphone Access Denied",
+                description: "Please enable microphone access in your browser settings.",
+                variant: "destructive",
+            });
+        }
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, [toast]);
+
+  const toggleListen = () => {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (error) {
+        console.error("Could not start speech recognition:", error);
+      }
+    }
+  };
+
 
   const handleSummarize = async () => {
     if (!activityLog || !mood) {
@@ -54,13 +119,29 @@ export default function ActivityLogger() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Textarea
-          placeholder="e.g., Woke up early, went for a run, had a healthy breakfast, worked on a project..."
-          value={activityLog}
-          onChange={(e) => setActivityLog(e.target.value)}
-          rows={6}
-          disabled={loading}
-        />
+        <div className="relative">
+          <Textarea
+            placeholder="e.g., Woke up early, went for a run, had a healthy breakfast, worked on a project..."
+            value={activityLog}
+            onChange={(e) => setActivityLog(e.target.value)}
+            rows={6}
+            disabled={loading}
+            className="pr-12"
+          />
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={toggleListen}
+            className={cn(
+              "absolute right-2 top-2 h-8 w-8",
+              isListening && "text-primary animate-pulse"
+            )}
+            title={isListening ? "Stop listening" : "Start listening"}
+          >
+            {isListening ? <MicOff /> : <Mic />}
+            <span className="sr-only">{isListening ? 'Stop voice input' : 'Start voice input'}</span>
+          </Button>
+        </div>
         <div>
           <Label htmlFor="mood-select">Today's overall mood</Label>
           <Select onValueChange={setMood} value={mood} disabled={loading}>
