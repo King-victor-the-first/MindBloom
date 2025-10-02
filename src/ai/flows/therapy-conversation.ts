@@ -11,7 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import wav from 'wav';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const TherapyConversationInputSchema = z.object({
   history: z.array(z.object({
@@ -103,7 +103,7 @@ const therapyConversationFlow = ai.defineFlow(
     const responseText = textOutput!.response;
 
     const { media } = await ai.generate({
-        model: googleAI.model('gemini-2.5-flash-preview-tts'),
+        model: 'gemini-2.5-flash-preview-tts',
         config: {
           responseModalities: ['AUDIO'],
           speechConfig: {
