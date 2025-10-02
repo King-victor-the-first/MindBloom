@@ -7,7 +7,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ShieldExclamation } from "lucide-react"
+import { ShieldAlert } from "lucide-react"
 
 type DisclaimerDialogProps = {
     onAgree: () => void;
@@ -19,7 +19,7 @@ export default function DisclaimerDialog({ onAgree }: DisclaimerDialogProps) {
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
-                        <ShieldExclamation className="w-6 h-6 text-primary" />
+                        <ShieldAlert className="w-6 h-6 text-primary" />
                         Important Disclaimer
                     </AlertDialogTitle>
                     <AlertDialogDescription className="pt-4 space-y-3 text-left">
