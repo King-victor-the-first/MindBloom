@@ -30,7 +30,7 @@ export default function SpinWheel() {
       const arc = 360 / moodBoosters.length;
       const index = Math.floor((360 - degrees + arc / 2) % 360 / arc);
       setSelectedTask(moodBoosters[index].text);
-    }, 3500); // Corresponds to the transition duration
+    }, 4000); // Corresponds to the transition duration
   };
 
   const segmentAngle = 360 / moodBoosters.length;
@@ -51,8 +51,11 @@ export default function SpinWheel() {
           }}
         />
         <div
-          className="relative w-full h-full rounded-full border-8 border-card shadow-lg overflow-hidden transition-transform duration-[3500ms] ease-out"
-          style={{ transform: `rotate(${rotation}deg)` }}
+          className="relative w-full h-full rounded-full border-8 border-card shadow-lg overflow-hidden transition-transform duration-[4000ms]"
+          style={{ 
+            transform: `rotate(${rotation}deg)`,
+            transitionTimingFunction: 'cubic-bezier(.17,.88,.24,1)'
+          }}
         >
           {moodBoosters.map((booster, index) => (
             <div
