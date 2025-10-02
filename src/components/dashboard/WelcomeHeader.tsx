@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ThemeToggle } from "../shared/ThemeToggle";
 
 export default function WelcomeHeader() {
   const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar');
@@ -15,12 +16,15 @@ export default function WelcomeHeader() {
           Ready to start your day with mindfulness?
         </p>
       </div>
-      <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
-        {userAvatar && (
-            <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint} />
-        )}
-        <AvatarFallback>VC</AvatarFallback>
-      </Avatar>
+      <div className="flex items-center gap-4">
+        <ThemeToggle />
+        <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
+          {userAvatar && (
+              <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint} />
+          )}
+          <AvatarFallback>VC</AvatarFallback>
+        </Avatar>
+      </div>
     </div>
   );
 }
