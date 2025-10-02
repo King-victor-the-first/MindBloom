@@ -71,7 +71,7 @@ export default function SpinWheel() {
                 className="absolute w-full h-full flex items-center justify-center"
                 style={{ transform: `rotate(${segmentAngle / 2}deg) translate(0, -25%)`}}
               >
-                <p className="text-xs text-center text-black/60 font-semibold px-4 transform -rotate-45">
+                <p className="text-xs text-center text-black/60 font-semibold px-4" style={{ transform: 'rotate(-30deg)' }}>
                   {booster.text.split(" ").slice(0, 3).join(" ")}
                 </p>
               </div>
