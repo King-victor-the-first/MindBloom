@@ -1,4 +1,5 @@
-Access MindBloom through https://mindbloomapp.vercel.app/dashboard 
+Access MindBloom through https://mindbloomapp.vercel.app 
+
 <<<<<<< HEAD
 MindBloom is a dedicated mental wellness companion tackling the escalating mental health crisis faced by university students, particularly those under immense academic and financial stress who lack access to affordable, confidential support. We directly solve the barriers of high cost and long wait times by offering the Gemini AI Voice Therapist, available 24/7 for realistic, empathetic voice-based therapy sessions.
 
