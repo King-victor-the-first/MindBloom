@@ -16,7 +16,7 @@ export default function WelcomeHeader() {
           Ready to start your day with mindfulness?
         </p>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 md:hidden">
         <ThemeToggle />
         <Avatar className="h-12 w-12 sm:h-14 sm:w-14">
           {userAvatar && (
