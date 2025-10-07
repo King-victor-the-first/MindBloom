@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Smile, ClipboardList, MessageCircle, Bot, LogOut } from 'lucide-react';
+import { Home, Smile, ClipboardList, MessageCircle, Bot, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
@@ -19,6 +19,7 @@ const navItems = [
   { href: '/therapy', label: 'AI Therapy', icon: Bot },
   { href: '/activities', label: 'Journal', icon: ClipboardList },
   { href: '/chat', label: 'Support Circle', icon: MessageCircle },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function Sidebar() {
