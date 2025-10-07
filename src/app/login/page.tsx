@@ -281,14 +281,12 @@ export default function LoginPage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" onClick={onGoogleSignIn} disabled={loading}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <GoogleIcon className="mr-2 h-5 w-5" />}
-                  Google
+              <div className="flex justify-center gap-4">
+                <Button variant="outline" size="icon" onClick={onGoogleSignIn} disabled={loading} aria-label="Continue with Google">
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin"/> : <GoogleIcon className="h-5 w-5" />}
                 </Button>
-                <Button variant="outline" onClick={onAppleSignIn} disabled={loading}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <AppleIcon className="mr-2 h-5 w-5" />}
-                  Apple
+                <Button variant="outline" size="icon" onClick={onAppleSignIn} disabled={loading} aria-label="Continue with Apple">
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin"/> : <AppleIcon className="h-5 w-5" />}
                 </Button>
               </div>
 
