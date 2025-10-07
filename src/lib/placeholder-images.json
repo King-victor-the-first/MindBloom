@@ -11,6 +11,12 @@
       "description": "AI avatar for the therapy session",
       "imageUrl": "https://images.unsplash.com/photo-1706490460810-13ccd331f87b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxjYWxtJTIwYWJzdHJhY3R8ZW58MHx8fHwxNzU5MjIzMDkzfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "calm abstract"
+    },
+    {
+      "id": "app-logo",
+      "description": "The MindBloom application logo",
+      "imageUrl": "https://storage.googleapis.com/project-magnolia-public-images/1721946805822_mindbloom-logo.png",
+      "imageHint": "colorful flower"
     }
   ]
 }
