@@ -15,7 +15,7 @@
     {
       "id": "app-logo",
       "description": "The MindBloom application logo",
-      "imageUrl": "https://storage.googleapis.com/project-magnolia-public-images/1721946805822_mindbloom-logo.png",
+      "imageUrl": "/mindbloomlogo.png",
       "imageHint": "colorful flower"
     }
   ]
