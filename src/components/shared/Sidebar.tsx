@@ -22,7 +22,7 @@ export default function Sidebar() {
   const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar');
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen p-4 bg-card border-r">
+    <aside className="hidden md:flex flex-col w-64 h-screen p-4 bg-card border-r fixed top-0 left-0">
         <div className="flex items-center justify-between">
             <Logo />
         </div>

@@ -9,7 +9,7 @@ export default function MainLayout({
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 md:pb-0 pb-28">{children}</main>
+      <main className="flex-1 md:ml-64 md:pb-0 pb-28">{children}</main>
       <BottomNavBar />
     </div>
   );
