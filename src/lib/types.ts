@@ -29,3 +29,10 @@ export interface ScheduledSession {
   date: string;
   time: string;
 }
+
+export interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}

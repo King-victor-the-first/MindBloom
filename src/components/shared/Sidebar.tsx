@@ -1,13 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, Smile, ClipboardList, MessageCircle, Bot } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Home, Smile, ClipboardList, MessageCircle, Bot, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { type UserProfile } from '@/lib/types';
+import { Button } from '../ui/button';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
@@ -19,7 +23,34 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar');
+  const auth = useAuth();
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, "userProfiles", user.uid);
+  }, [firestore, user]);
+  
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    router.push('/login');
+  };
+
+  const getFirstName = () => {
+    if (userProfile) return userProfile.firstName;
+    if (user && user.displayName) return user.displayName.split(' ')[0];
+    return "User";
+  };
+  
+  const getInitials = () => {
+    if (userProfile) return `${userProfile.firstName?.[0] || ''}${userProfile.lastName?.[0] || ''}`;
+    if (user && user.displayName) return user.displayName.split(' ').map(n => n[0]).join('');
+    return "U";
+  }
 
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen p-4 bg-card border-r fixed top-0 left-0">
@@ -52,17 +83,23 @@ export default function Sidebar() {
 
         <div className="mt-auto space-y-4">
             <ThemeToggle />
-             <div className="flex items-center gap-3 border-t pt-4">
-                <Avatar className="h-10 w-10">
-                {userAvatar && (
-                    <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint} />
-                )}
-                <AvatarFallback>VC</AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="font-semibold text-sm">Victor</p>
-                    <p className="text-xs text-muted-foreground">Student</p>
+             <div className="flex items-center justify-between border-t pt-4">
+                <div className='flex items-center gap-3'>
+                  <Avatar className="h-10 w-10">
+                    {user?.photoURL ? (
+                        <AvatarImage src={user.photoURL} alt="User Avatar" />
+                    ) : (
+                      <AvatarFallback>{getInitials()}</AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div>
+                      <p className="font-semibold text-sm">{getFirstName()}</p>
+                      <p className="text-xs text-muted-foreground">Student</p>
+                  </div>
                 </div>
+                <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+                  <LogOut className="w-5 h-5 text-muted-foreground" />
+                </Button>
             </div>
         </div>
     </aside>
