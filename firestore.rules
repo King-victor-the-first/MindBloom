@@ -1,0 +1,80 @@
+/**
+ * @file Firebase Security Rules for Firestore.
+ *
+ * Core Philosophy: This ruleset enforces a strict user-ownership model. Each user can only access their own account and profile data.
+ *
+ * Data Structure:
+ * - /userAccounts/{userAccountId}: Stores user account information. The `userAccountId` MUST match the Firebase Auth UID.
+ * - /userProfiles/{userProfileId}: Stores user profile data, linked to the UserAccount. Includes `userAccountId` for authorization independence.
+ *
+ * Key Security Decisions:
+ * - User listing is disabled for both `userAccounts` and `userProfiles` collections to prevent information disclosure.
+ * - The `userAccountId` is duplicated in `userProfiles` to avoid costly `get()` calls in security rules.
+ * - Data consistency between document IDs and internal fields is enforced on `create` and `update` operations to prevent unauthorized data access.
+ *
+ * Denormalization for Authorization: The `userAccountId` is present in both `userAccounts` and `userProfiles` documents. This duplication is intentional to avoid needing to perform expensive `get()` operations in the security rules to verify ownership.
+ * Structural Segregation: User account data and profile data are stored in separate collections (`userAccounts` and `userProfiles`) to allow for more granular control over access permissions.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Secure user account information. Only the authenticated user can read or write their own account data.
+     * @path /userAccounts/{userAccountId}
+     * @allow (get, create, update, delete) if the user is signed in and the `userAccountId` matches the authenticated user's UID.
+     * @deny (get) if the `userAccountId` does not match the authenticated user's UID.
+     * @deny (list) Always deny listing of user accounts.
+     * @deny (create) if the `userAccountId` does not match the authenticated user's UID.
+     * @deny (update) if the `userAccountId` does not match the authenticated user's UID, or the document does not exist.
+     * @deny (delete) if the `userAccountId` does not match the authenticated user's UID, or the document does not exist.
+     * @principle Enforces document ownership for all operations on user accounts.
+     */
+    match /userAccounts/{userAccountId} {
+      allow get: if isSignedIn() && isOwner(userAccountId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userAccountId) && request.resource.data.id == request.auth.uid;
+      allow update: if isSignedIn() && isExistingOwner(userAccountId) && request.resource.data.id == resource.data.id;
+      allow delete: if isSignedIn() && isExistingOwner(userAccountId);
+    }
+
+    /**
+     * @description Secure user profile information. Only the authenticated user can read or write their own profile data.
+     * @path /userProfiles/{userProfileId}
+     * @allow (get, create, update, delete) if the user is signed in and the `userAccountId` in the profile matches the authenticated user's UID.
+     * @deny (get) if the `userAccountId` in the profile does not match the authenticated user's UID.
+     * @deny (list) Always deny listing of user profiles.
+     * @deny (create) if the `userAccountId` in the profile does not match the authenticated user's UID.
+     * @deny (update) if the `userAccountId` in the profile does not match the authenticated user's UID, or the document does not exist.
+     * @deny (delete) if the `userAccountId` in the profile does not match the authenticated user's UID, or the document does not exist.
+     * @principle Enforces document ownership for all operations on user profiles, using the `userAccountId` field for authorization independence.
+     */
+    match /userProfiles/{userProfileId} {
+      allow get: if isSignedIn() && isProfileOwner(resource.data.userAccountId);
+      allow list: if false;
+      allow create: if isSignedIn() && isProfileOwner(request.resource.data.userAccountId) && request.resource.data.userAccountId == request.auth.uid;
+      allow update: if isSignedIn() && isExistingProfileOwner(resource.data.userAccountId) && request.resource.data.userAccountId == resource.data.userAccountId;
+      allow delete: if isSignedIn() && isExistingProfileOwner(resource.data.userAccountId);
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+
+    function isProfileOwner(userAccountId) {
+      return request.auth.uid == userAccountId;
+    }
+
+    function isExistingProfileOwner(userAccountId) {
+        return isProfileOwner(userAccountId) && resource != null;
+    }
+  }
+}
