@@ -13,7 +13,7 @@ import {z} from 'genkit';
 const SummarizeActivityLogsInputSchema = z.object({
   mood: z.string().describe("The user's reported mood for the day."),
   stress: z.string().describe("The user's stress level for the day. (e.g., 'Low', 'Moderate', 'High')"),
-  location: z.string().describe("Where the user spent most of their day. (e.g., 'Home', 'School/Work')"),
+  location: z.array(z.string()).describe("A list of places the user spent their day. (e.g., ['Home', 'School/Work'])"),
   accomplishment: z.string().describe("Whether the user felt they accomplished something. (e.g., 'Yes, most of it', 'A little bit')"),
   selfCare: z.string().describe("Whether the user took time for self-care. (e.g., 'Yes, for a while', 'No')"),
   freshAir: z.string().describe("Whether the user got fresh air. (e.g., 'A little', 'None')"),
@@ -46,7 +46,7 @@ const summarizeActivityLogsPrompt = ai.definePrompt({
   
   Today's Survey:
   - Stress Level: {{{stress}}}
-  - Where they spent the day: {{{location}}}
+  - Places visited: {{#each location}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
   - Felt accomplished: {{{accomplishment}}}
   - Took time for self-care: {{{selfCare}}}
   - Fresh Air: {{{freshAir}}}
