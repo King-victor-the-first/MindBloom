@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Smile, ClipboardList, MessageCircle, Settings } from 'lucide-react';
+import { Home, Smile, ClipboardList, Bot, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SiriWave from './SiriWave';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '../ui/button';
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
@@ -21,17 +23,39 @@ export default function BottomNavBar() {
     <footer className="fixed bottom-4 left-4 right-4 z-50 md:hidden">
       <nav className="max-w-md mx-auto grid grid-cols-5 items-center h-16 bg-card/95 backdrop-blur-sm border border-border/80 rounded-full shadow-lg">
         {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
+          const isActive = pathname.startsWith(item.href) || (item.href === '/therapy' && pathname.startsWith('/chat'));
           if (item.icon === 'siri') {
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center justify-center w-16 h-16 -translate-y-4 bg-card rounded-full shadow-lg border-2 border-primary mx-auto"
-                style={{ gridColumn: '3' }}
-              >
-                <SiriWave isActive={isActive} />
-              </Link>
+              <div key={item.href} className="flex justify-center" style={{ gridColumn: '3' }}>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="flex items-center justify-center w-16 h-16 -translate-y-4 bg-card rounded-full shadow-lg border-2 border-primary mx-auto"
+                      aria-label="Open Conversation Hub"
+                    >
+                      <SiriWave isActive={isActive} />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 mb-2">
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium leading-none">Conversation Hub</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Connect with your AI or the community.
+                        </p>
+                      </div>
+                      <div className="grid gap-2">
+                        <Link href="/therapy" passHref>
+                           <Button variant={pathname.startsWith('/therapy') ? "default" : "outline"} className="w-full justify-start">AI Therapy Session</Button>
+                        </Link>
+                        <Link href="/chat" passHref>
+                           <Button variant={pathname.startsWith('/chat') ? "default" : "outline"} className="w-full justify-start">Support Circle</Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             );
           }
 
