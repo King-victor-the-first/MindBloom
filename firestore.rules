@@ -1,64 +1,81 @@
 /**
  * @file Firestore Security Rules
- * @core_philosophy This ruleset prioritizes user data protection through strict ownership and access control.
- * Data is organized under user-specific paths (`/userProfiles/{userId}`). Only authenticated users can access their own data.
- * The ruleset is designed to be adaptable for prototyping, focusing on authorization and relational integrity, rather than complete schema validation.
- * @data_structure User profiles are stored in `/userProfiles/{userId}`.
+ * @core_philosophy This ruleset enforces a user-ownership model for user profiles.
+ *   All data is nested under /userProfiles/{userId}. Only the authenticated user can read/write their own profile.
+ *   Read operations for `groupChatMessages` is allowed.
+ * @data_structure
+ *   /userProfiles/{userId}: Stores public profile information for each user, accessible only by that user.
  * @key_security_decisions
- *  - Users can only create, read, update, and delete their own profiles. Listing all user profiles is disallowed.
- *  - Authorization relies exclusively on the authenticated user's UID (`request.auth.uid`).
+ *   - Users can only manage their own profiles.
+ *   - Read operation for `groupChatMessages` is allowed.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secure user profile data. Only the authenticated user can manage their profile.
-     * @path /userProfiles/{userId}
-     * @allow (create) User with UID 'user123' creates their profile at /userProfiles/user123.
-     * @allow (get) User with UID 'user123' reads their profile at /userProfiles/user123.
-     * @allow (update) User with UID 'user123' updates their profile at /userProfiles/user123.
-     * @allow (delete) User with UID 'user123' deletes their profile at /userProfiles/user123.
-     * @deny (create) User with UID 'user456' attempts to create a profile at /userProfiles/user123.
-     * @deny (get) User with UID 'user456' attempts to read profile at /userProfiles/user123.
-     * @deny (update) User with UID 'user456' attempts to update profile at /userProfiles/user123.
-     * @deny (delete) User with UID 'user456' attempts to delete profile at /userProfiles/user123.
-     * @principle Enforces document ownership for all operations on user profiles.
+     * @description Checks if the request is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user ID matches the provided user ID.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner of the existing document.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description
+     *   - Protects user profile information.
+     * @path
+     *   /userProfiles/{userId}
+     * @allow
+     *   - (get, update, delete) User with UID "user123" can read/write/delete their own profile document.
+     * @deny
+     *   - (get, update, delete) User with UID "user456" cannot read/write/delete the profile document of user "user123".
+     *   - (create) User with UID "user456" cannot create a document at /userProfiles/user123.
+     * @principle
+     *   Enforces document ownership for reads and writes.
      */
     match /userProfiles/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.email is string;
+
+      allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Deny all access to groupChatMessages collection.
-     * @path /groupChatMessages
-     * @allow None
-     * @deny All
-     * @principle This collection is not intended to be accessed by clients according to the documentation provided.
+     * @description Allows read operation for `groupChatMessages` collection.
+     * @path
+     *   /groupChatMessages
+     * @allow
+     *   - (list) Any user can list documents in the `/groupChatMessages` collection.
+     *   - (get) Any user can get documents in the `/groupChatMessages` collection.
+     * @deny
+     *   - (create) No user can create documents in the `/groupChatMessages` collection.
+     *   - (update) No user can update documents in the `/groupChatMessages` collection.
+     *   - (delete) No user can delete documents in the `/groupChatMessages` collection.
+     * @principle
+     *   Allows anyone to read messages, but no one to write.
      */
     match /groupChatMessages {
-      allow get: if false;
-      allow list: if false;
+      allow get, list: if true;
+
       allow create: if false;
       allow update: if false;
       allow delete: if false;
-    }
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
     }
   }
 }
