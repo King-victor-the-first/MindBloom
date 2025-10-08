@@ -16,6 +16,8 @@ const SummarizeActivityLogsInputSchema = z.object({
   connected: z.string().describe("Whether the user connected with someone. (e.g., 'Yes', 'No')"),
   enjoyment: z.string().describe("Whether the user did something enjoyable. (e.g., 'Yes', 'No')"),
   sleep: z.string().describe("The user's sleep quality. (e.g., 'Good', 'Okay', 'Poor')"),
+  stress: z.string().describe("The user's stress level for the day. (e.g., 'Low', 'Moderate', 'High')"),
+  medication: z.string().describe("Whether the user took their medication. (e.g., 'Yes', 'No', 'N/A')"),
 });
 
 export type SummarizeActivityLogsInput = z.infer<typeof SummarizeActivityLogsInputSchema>;
@@ -44,8 +46,10 @@ const summarizeActivityLogsPrompt = ai.definePrompt({
   - Connected with someone: {{{connected}}}
   - Did something for enjoyment: {{{enjoyment}}}
   - Last night's sleep: {{{sleep}}}
+  - Stress Level: {{{stress}}}
+  - Took Medication: {{{medication}}}
 
-  Based on this, provide a concise summary and one or two actionable, positive insights. Focus on connections between their activities and mood. For example, if they felt good and got fresh air, highlight that connection. If they felt bad and their sleep was poor, gently suggest that might be a factor.
+  Based on this, provide a concise summary and one or two actionable, positive insights. Focus on connections between their activities and mood. For example, if they felt good and got fresh air, highlight that connection. If they felt bad and their sleep was poor, gently suggest that might be a factor. Be sensitive and supportive in your tone.
   `,
 });
 

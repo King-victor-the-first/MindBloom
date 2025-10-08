@@ -12,6 +12,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const surveyQuestions = [
   {
+    id: "stress",
+    label: "How would you rate your stress level today?",
+    options: ["Low", "Moderate", "High"],
+  },
+  {
     id: "freshAir",
     label: "Did you get some fresh air today?",
     options: ["Yes, for a while", "Just a little", "Not at all"],
@@ -30,6 +35,11 @@ const surveyQuestions = [
     id: "sleep",
     label: "How was your sleep last night?",
     options: ["Good", "Okay", "Poor"],
+  },
+  {
+    id: "medication",
+    label: "Did you take your medication today?",
+    options: ["Yes", "No", "N/A"],
   },
 ];
 
@@ -66,6 +76,8 @@ export default function ActivitySurvey() {
         connected: answers.connected,
         enjoyment: answers.enjoyment,
         sleep: answers.sleep,
+        stress: answers.stress,
+        medication: answers.medication,
       });
       setSummary(result);
     } catch (error) {
@@ -83,9 +95,9 @@ export default function ActivitySurvey() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Daily Check-in</CardTitle>
+        <CardTitle>Your Survey</CardTitle>
         <CardDescription>
-          Quickly answer these questions about your day, select your mood, and let our AI provide some insights.
+          Select your mood and answer a few questions about your day to receive personalized insights from our AI.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
