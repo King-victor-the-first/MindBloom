@@ -57,26 +57,27 @@ export default function SpinWheel() {
             transitionTimingFunction: 'cubic-bezier(.17,.88,.24,1)'
           }}
         >
-          {moodBoosters.map((booster, index) => (
-            <div
-              key={index}
-              className="absolute w-1/2 h-1/2 origin-bottom-right"
-              style={{
-                transform: `rotate(${index * segmentAngle}deg)`,
-                clipPath: `polygon(0 0, 100% 0, 100% 100%, 0 0)`,
-                backgroundColor: colors[index % colors.length],
-              }}
-            >
+          {moodBoosters.map((booster, index) => {
+            const Icon = booster.icon;
+            return (
               <div
-                className="absolute w-full h-full flex items-center justify-center"
-                style={{ transform: `rotate(${segmentAngle / 2}deg) translate(0, -25%)`}}
+                key={index}
+                className="absolute w-1/2 h-1/2 origin-bottom-right"
+                style={{
+                  transform: `rotate(${index * segmentAngle}deg)`,
+                  clipPath: `polygon(0 0, 100% 0, 100% 100%, 0 0)`,
+                  backgroundColor: colors[index % colors.length],
+                }}
               >
-                <p className="text-xs text-center text-black/60 font-semibold px-4" style={{ transform: 'rotate(270deg)' }}>
-                  {booster.text.split(" ").slice(0, 3).join(" ")}
-                </p>
+                <div
+                  className="absolute w-full h-full flex items-center justify-center text-primary-foreground"
+                  style={{ transform: `rotate(${segmentAngle / 2}deg) translate(0, -35%)`}}
+                >
+                  <Icon className="w-8 h-8 text-black/60" style={{ transform: 'rotate(270deg)'}} />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+            })}
         </div>
       </div>
       <Button onClick={spin} disabled={spinning} size="lg" className="mt-8 rounded-full shadow-lg">

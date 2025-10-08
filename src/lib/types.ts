@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react';
+
 export interface Activity {
   id: number;
   description: string;
@@ -22,6 +24,7 @@ export interface ChatMessage {
 
 export interface MoodBooster {
   text: string;
+  icon: LucideIcon;
 }
 
 export interface ScheduledSession {
