@@ -2,75 +2,75 @@
  * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset prioritizes strict user-ownership and secure access patterns while remaining flexible on data schemas during prototyping.
- * It enforces that only the authenticated user can create, read, update, and delete their own data, with the exception of public read-only collections.
+ * This ruleset is in prototyping mode. It prioritizes developer velocity and rapid iteration.
+ * Therefore, it enforces authentication and authorization checks but skips schema validation.
+ * The goal is to prevent unauthorized access while allowing data shapes to evolve quickly.
  *
  * Data Structure:
- * - User profile data is stored under /userProfiles/{userId}.
- * - Mood entries are stored under /userProfiles/{userId}/moodEntries/{moodEntryId}.
+ * The database contains user profiles stored under `/userProfiles/{userId}`.
  *
  * Key Security Decisions:
- * - Users can only access their own user profiles and mood entries.
- * - Listing mood entries is restricted to the owner of the user profile.
- * - Data schema validation is relaxed to allow rapid prototyping.
- *
- * Denormalization for Authorization:
- * - User profile documents and mood entries are linked to the user's UID via the document ID and path.
+ * - Users can only read/write their own profile data.
+ * - List operations on `/userProfiles` are disallowed to prevent user enumeration.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows a user to manage their own profile.
+     * @description Enforces that only the authenticated user can read or write their own profile.
      * @path /userProfiles/{userId}
-     * @allow (create) User with matching UID can create their profile.
-     * @deny (create) User attempts to create a profile with a different UID.
-     * @allow (get) Any authenticated user can read a user profile.
-     * @deny (get) Unauthenticated user cannot read a user profile.
-     * @allow (update) User with matching UID can update their profile.
-     * @deny (update) User attempts to update a profile with a different UID.
-     * @allow (delete) User with matching UID can delete their profile.
-     * @deny (delete) User attempts to delete a profile with a different UID.
-     * @principle Enforces document ownership for writes; allows public reads.
+     * @allow (create, update, delete, get) - Authenticated user with matching UID.
+     * @deny (create, update, delete, get) - Any unauthenticated request.
+     * @deny (create, update, delete, get) - Authenticated user with a non-matching UID.
+     * @principle Enforces document ownership for writes.
      */
     match /userProfiles/{userId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false; // Explicitly disallow listing user profiles.
       allow create: if isSignedIn() && isOwner(userId);
-      allow get: if isSignedIn();
       allow update: if isSignedIn() && isExistingOwner(userId);
       allow delete: if isSignedIn() && isExistingOwner(userId);
-      allow list: if false;
     }
 
     /**
-     * @description Allows a user to manage their own mood entries.
-     * @path /userProfiles/{userId}/moodEntries/{moodEntryId}
-     * @allow (create) User with matching UID can create mood entries.
-     * @deny (create) User attempts to create mood entries with a different UID.
-     * @allow (get) User with matching UID can read their own mood entries.
-     * @deny (get) User attempts to read mood entries of a different UID.
-     * @allow (update) User with matching UID can update their own mood entries.
-     * @deny (update) User attempts to update mood entries of a different UID.
-     * @allow (delete) User with matching UID can delete their own mood entries.
-     * @deny (delete) User attempts to delete mood entries of a different UID.
-     * @principle Enforces document ownership for all operations.
+     * @description Access to groupChatMessages collection is denied for all users
+     * @path /groupChatMessages
+     * @allow None
+     * @deny All requests
      */
-    match /userProfiles/{userId}/moodEntries/{moodEntryId} {
-      allow create: if isSignedIn() && isOwner(userId);
-      allow get: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
+    match /groupChatMessages/{document} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the user is signed in.
+     * @return True if the user is signed in, false otherwise.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the user ID matches the authenticated user's UID.
+     * @param {string} userId - The user ID to check.
+     * @return True if the user ID matches the authenticated user's UID, false otherwise.
+     */
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
+    /**
+     * @description Checks if the user is the owner of an existing document.
+     * @param {string} userId - The user ID to check.
+     * @return True if the user is the owner and the document exists.
+     */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
