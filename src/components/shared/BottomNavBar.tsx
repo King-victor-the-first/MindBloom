@@ -11,7 +11,7 @@ const navItems = [
   { href: '/mood', label: 'Mood', icon: Smile },
   { href: '/therapy', label: 'Therapy', icon: 'siri' },
   { href: '/activities', label: 'Journal', icon: ClipboardList },
-  { href: '/chat', label: 'Chat', icon: MessageCircle },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function BottomNavBar() {
@@ -21,7 +21,7 @@ export default function BottomNavBar() {
     <footer className="fixed bottom-4 left-4 right-4 z-50 md:hidden">
       <nav className="max-w-md mx-auto grid grid-cols-5 items-center h-16 bg-card/95 backdrop-blur-sm border border-border/80 rounded-full shadow-lg">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname.startsWith(item.href);
           if (item.icon === 'siri') {
             return (
               <Link

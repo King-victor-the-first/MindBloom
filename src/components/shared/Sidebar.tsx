@@ -7,18 +7,26 @@ import { cn } from '@/lib/utils';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { type UserProfile } from '@/lib/types';
 import { Button } from '../ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { ChevronRight } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/mood', label: 'Mood Tracking', icon: Smile },
-  { href: '/therapy', label: 'AI Therapy', icon: Bot },
+  { 
+    href: '/therapy', 
+    label: 'Conversation Hub', 
+    icon: Bot,
+    subItems: [
+        { href: '/therapy', label: 'AI Therapy Session' },
+        { href: '/chat', label: 'Support Circle' }
+    ]
+  },
   { href: '/activities', label: 'Journal', icon: ClipboardList },
-  { href: '/chat', label: 'Support Circle', icon: MessageCircle },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -59,26 +67,66 @@ export default function Sidebar() {
             <Logo />
         </div>
 
-        <nav className="flex flex-col mt-8 space-y-2 flex-1">
+        <nav className="flex flex-col mt-8 space-y-1 flex-1">
             {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
+                const isActive = pathname === item.href || (item.subItems && item.subItems.some(sub => pathname.startsWith(sub.href)));
+                const Icon = item.icon;
 
-            return (
-                <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                    'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors duration-200',
-                    isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
-                >
-                <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
-                <span className="font-medium">{item.label}</span>
-                </Link>
-            );
+                if (item.subItems) {
+                    return (
+                        <Collapsible key={item.href} defaultOpen={isActive}>
+                            <CollapsibleTrigger className='w-full'>
+                                <div className={cn(
+                                    'flex items-center justify-between gap-3 px-4 py-2 rounded-lg transition-colors duration-200 w-full',
+                                    isActive
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                )}>
+                                    <div className='flex items-center gap-3'>
+                                        <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                                        <span className="font-medium">{item.label}</span>
+                                    </div>
+                                    <ChevronRight className='w-4 h-4 transition-transform [&[data-state=open]]:rotate-90' />
+                                </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className='pl-8 pt-1 space-y-1'>
+                                {item.subItems.map(subItem => {
+                                    const isSubItemActive = pathname.startsWith(subItem.href);
+                                    return (
+                                        <Link
+                                            key={subItem.href}
+                                            href={subItem.href}
+                                            className={cn(
+                                                'flex items-center gap-3 px-4 py-1.5 rounded-md transition-colors duration-200 text-sm',
+                                                isSubItemActive
+                                                ? 'text-primary font-semibold'
+                                                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                                            )}
+                                            >
+                                            {subItem.label}
+                                        </Link>
+                                    )
+                                })}
+                            </CollapsibleContent>
+                        </Collapsible>
+                    )
+                }
+
+                return (
+                    <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                        'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors duration-200',
+                        isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                    >
+                    <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                    <span className="font-medium">{item.label}</span>
+                    </Link>
+                );
             })}
         </nav>
 
