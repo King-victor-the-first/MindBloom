@@ -103,7 +103,7 @@ export default function ChatInterface() {
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
         message: input,
         createdAt: serverTimestamp(),
-        isModerator: userProfile.isModerator || false,
+        isModerator: userProfile?.isModerator === true,
       };
 
       const messagesCollectionRef = collection(firestore, "groupChatMessages");
