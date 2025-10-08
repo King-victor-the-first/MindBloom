@@ -45,7 +45,7 @@ const summarizeActivityLogsPrompt = ai.definePrompt({
   - Did something for enjoyment: {{{enjoyment}}}
   - Last night's sleep: {{{sleep}}}
 
-  Based on this, provide a concise summary and one or two actionable, positive insights. Focus on connections between their activities and mood. For example, if they felt good and got fresh air, highlight that connection. If they felt bad and didn't connect with anyone, gently suggest that might be a factor.
+  Based on this, provide a concise summary and one or two actionable, positive insights. Focus on connections between their activities and mood. For example, if they felt good and got fresh air, highlight that connection. If they felt bad and their sleep was poor, gently suggest that might be a factor.
   `,
 });
 
