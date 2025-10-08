@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the system.",
+      "type": "object",
+      "properties": {
+        "firstName": {
+          "type": "string",
+          "description": "The user's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The user's last name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        }
+      },
+      "required": ["firstName", "lastName", "email"]
+    },
+    "MoodEntry": {
+      "title": "Mood Entry",
+      "description": "Represents a single mood entry for a user.",
+      "type": "object",
+      "properties": {
+        "mood": {
+          "type": "string",
+          "description": "The user's reported mood.",
+          "enum": ["Awful", "Bad", "Okay", "Good", "Great"]
+        },
+        "value": {
+            "type": "number",
+            "description": "A numerical representation of the mood (e.g., 1-5)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the mood was logged."
+        }
+      },
+      "required": ["mood", "value", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["password", "anonymous", "google.com", "apple.com"]
+  },
+  "firestore": {
+    "/userProfiles/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores public profile information for a user."
+    },
+    "/userProfiles/{userId}/moodEntries/{entryId}": {
+        "schema": {
+            "$ref": "#/entities/MoodEntry"
+        },
+        "description": "Stores a user's mood entries over time."
+    }
+  }
+}

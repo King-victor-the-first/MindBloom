@@ -39,3 +39,10 @@ export interface UserProfile {
   lastName: string;
   email: string;
 }
+
+export interface MoodEntry {
+    id: string;
+    mood: "Awful" | "Bad" | "Okay" | "Good" | "Great";
+    value: number;
+    createdAt: any; // Firestore Timestamp
+}
