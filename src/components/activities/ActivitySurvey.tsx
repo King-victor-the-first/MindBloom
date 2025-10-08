@@ -17,6 +17,21 @@ const surveyQuestions = [
     options: ["Low", "Moderate", "High"],
   },
   {
+    id: "location",
+    label: "Where did you spend most of your day?",
+    options: ["Home", "School/Work", "A mix", "Elsewhere"],
+  },
+  {
+    id: "accomplishment",
+    label: "Did you accomplish something you wanted to today?",
+    options: ["Yes, most of it", "A little bit", "Not really"],
+  },
+  {
+    id: "selfCare",
+    label: "Did you take a moment for yourself to relax or recharge?",
+    options: ["Yes, for a while", "Just a moment", "No"],
+  },
+  {
     id: "freshAir",
     label: "Did you get some fresh air today?",
     options: ["Yes, for a while", "Just a little", "Not at all"],
@@ -24,7 +39,7 @@ const surveyQuestions = [
   {
     id: "connected",
     label: "Did you connect with someone?",
-    options: ["Yes", "Briefly", "No"],
+    options: ["Yes, meaningfully", "Briefly", "No"],
   },
   {
     id: "enjoyment",
@@ -72,11 +87,14 @@ export default function ActivitySurvey() {
     try {
       const result = await summarizeActivityLogs({ 
         mood,
+        stress: answers.stress,
+        location: answers.location,
+        accomplishment: answers.accomplishment,
+        selfCare: answers.selfCare,
         freshAir: answers.freshAir,
         connected: answers.connected,
         enjoyment: answers.enjoyment,
         sleep: answers.sleep,
-        stress: answers.stress,
         medication: answers.medication,
       });
       setSummary(result);

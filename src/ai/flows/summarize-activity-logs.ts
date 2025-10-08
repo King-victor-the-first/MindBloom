@@ -11,12 +11,15 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SummarizeActivityLogsInputSchema = z.object({
-  mood: z.string().describe('The user\'s reported mood for the day.'),
+  mood: z.string().describe("The user's reported mood for the day."),
+  stress: z.string().describe("The user's stress level for the day. (e.g., 'Low', 'Moderate', 'High')"),
+  location: z.string().describe("Where the user spent most of their day. (e.g., 'Home', 'School/Work')"),
+  accomplishment: z.string().describe("Whether the user felt they accomplished something. (e.g., 'Yes, most of it', 'A little bit')"),
+  selfCare: z.string().describe("Whether the user took time for self-care. (e.g., 'Yes, for a while', 'No')"),
   freshAir: z.string().describe("Whether the user got fresh air. (e.g., 'A little', 'None')"),
-  connected: z.string().describe("Whether the user connected with someone. (e.g., 'Yes', 'No')"),
+  connected: z.string().describe("Whether the user connected with someone. (e.g., 'Yes, meaningfully', 'No')"),
   enjoyment: z.string().describe("Whether the user did something enjoyable. (e.g., 'Yes', 'No')"),
   sleep: z.string().describe("The user's sleep quality. (e.g., 'Good', 'Okay', 'Poor')"),
-  stress: z.string().describe("The user's stress level for the day. (e.g., 'Low', 'Moderate', 'High')"),
   medication: z.string().describe("Whether the user took their medication. (e.g., 'Yes', 'No', 'N/A')"),
 });
 
@@ -42,11 +45,14 @@ const summarizeActivityLogsPrompt = ai.definePrompt({
   User's Mood: {{{mood}}}
   
   Today's Survey:
+  - Stress Level: {{{stress}}}
+  - Where they spent the day: {{{location}}}
+  - Felt accomplished: {{{accomplishment}}}
+  - Took time for self-care: {{{selfCare}}}
   - Fresh Air: {{{freshAir}}}
   - Connected with someone: {{{connected}}}
   - Did something for enjoyment: {{{enjoyment}}}
   - Last night's sleep: {{{sleep}}}
-  - Stress Level: {{{stress}}}
   - Took Medication: {{{medication}}}
 
   Based on this, provide a concise summary and one or two actionable, positive insights. Focus on connections between their activities and mood. For example, if they felt good and got fresh air, highlight that connection. If they felt bad and their sleep was poor, gently suggest that might be a factor. Be sensitive and supportive in your tone.
