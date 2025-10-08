@@ -120,7 +120,7 @@ export default function ChatInterface() {
         variant: "destructive",
       });
     } finally {
-      setModeration-loading(false);
+      setModerationLoading(false);
     }
   };
 
