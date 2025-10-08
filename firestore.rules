@@ -1,45 +1,46 @@
 /**
- * @fileoverview Firestore Security Rules for Prototyping.
- *
- * Core Philosophy:
- * This ruleset is in prototyping mode. It prioritizes developer velocity and rapid iteration.
- * Therefore, it enforces authentication and authorization checks but skips schema validation.
- * The goal is to prevent unauthorized access while allowing data shapes to evolve quickly.
- *
- * Data Structure:
- * The database contains user profiles stored under `/userProfiles/{userId}`.
- *
- * Key Security Decisions:
- * - Users can only read/write their own profile data.
- * - List operations on `/userProfiles` are disallowed to prevent user enumeration.
+ * @file Firestore Security Rules
+ * @core_philosophy This ruleset prioritizes user data protection through strict ownership and access control.
+ * Data is organized under user-specific paths (`/userProfiles/{userId}`). Only authenticated users can access their own data.
+ * The ruleset is designed to be adaptable for prototyping, focusing on authorization and relational integrity, rather than complete schema validation.
+ * @data_structure User profiles are stored in `/userProfiles/{userId}`.
+ * @key_security_decisions
+ *  - Users can only create, read, update, and delete their own profiles. Listing all user profiles is disallowed.
+ *  - Authorization relies exclusively on the authenticated user's UID (`request.auth.uid`).
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Enforces that only the authenticated user can read or write their own profile.
+     * @description Secure user profile data. Only the authenticated user can manage their profile.
      * @path /userProfiles/{userId}
-     * @allow (create, update, delete, get) - Authenticated user with matching UID.
-     * @deny (create, update, delete, get) - Any unauthenticated request.
-     * @deny (create, update, delete, get) - Authenticated user with a non-matching UID.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with UID 'user123' creates their profile at /userProfiles/user123.
+     * @allow (get) User with UID 'user123' reads their profile at /userProfiles/user123.
+     * @allow (update) User with UID 'user123' updates their profile at /userProfiles/user123.
+     * @allow (delete) User with UID 'user123' deletes their profile at /userProfiles/user123.
+     * @deny (create) User with UID 'user456' attempts to create a profile at /userProfiles/user123.
+     * @deny (get) User with UID 'user456' attempts to read profile at /userProfiles/user123.
+     * @deny (update) User with UID 'user456' attempts to update profile at /userProfiles/user123.
+     * @deny (delete) User with UID 'user456' attempts to delete profile at /userProfiles/user123.
+     * @principle Enforces document ownership for all operations on user profiles.
      */
     match /userProfiles/{userId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false; // Explicitly disallow listing user profiles.
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.email is string;
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Access to groupChatMessages collection is denied for all users
+     * @description Deny all access to groupChatMessages collection.
      * @path /groupChatMessages
      * @allow None
-     * @deny All requests
+     * @deny All
+     * @principle This collection is not intended to be accessed by clients according to the documentation provided.
      */
-    match /groupChatMessages/{document} {
+    match /groupChatMessages {
       allow get: if false;
       allow list: if false;
       allow create: if false;
@@ -47,30 +48,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // --- Helper Functions ---
-
-    /**
-     * @description Checks if the user is signed in.
-     * @return True if the user is signed in, false otherwise.
-     */
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the user ID matches the authenticated user's UID.
-     * @param {string} userId - The user ID to check.
-     * @return True if the user ID matches the authenticated user's UID, false otherwise.
-     */
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Checks if the user is the owner of an existing document.
-     * @param {string} userId - The user ID to check.
-     * @return True if the user is the owner and the document exists.
-     */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
