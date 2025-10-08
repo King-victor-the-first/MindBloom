@@ -11,8 +11,11 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SummarizeActivityLogsInputSchema = z.object({
-  activityLogs: z.string().describe('A detailed log of the user\'s daily activities.'),
   mood: z.string().describe('The user\'s reported mood for the day.'),
+  freshAir: z.string().describe("Whether the user got fresh air. (e.g., 'A little', 'None')"),
+  connected: z.string().describe("Whether the user connected with someone. (e.g., 'Yes', 'No')"),
+  enjoyment: z.string().describe("Whether the user did something enjoyable. (e.g., 'Yes', 'No')"),
+  sleep: z.string().describe("The user's sleep quality. (e.g., 'Good', 'Okay', 'Poor')"),
 });
 
 export type SummarizeActivityLogsInput = z.infer<typeof SummarizeActivityLogsInputSchema>;
@@ -32,7 +35,18 @@ const summarizeActivityLogsPrompt = ai.definePrompt({
   name: 'summarizeActivityLogsPrompt',
   input: {schema: SummarizeActivityLogsInputSchema},
   output: {schema: SummarizeActivityLogsOutputSchema},
-  prompt: `You are an AI assistant that analyzes a user's activity logs and mood to provide insights into their well-being.\n\n  Activity Logs: {{{activityLogs}}}\n  Mood: {{{mood}}}\n\n  Provide a summary of the activity logs and their impact on the user's mood. Also, provide insights into how specific activities are affecting the user's well-being.\n`,
+  prompt: `You are an AI assistant that analyzes a user's daily survey answers and mood to provide gentle, encouraging insights for their well-being.
+
+  User's Mood: {{{mood}}}
+  
+  Today's Survey:
+  - Fresh Air: {{{freshAir}}}
+  - Connected with someone: {{{connected}}}
+  - Did something for enjoyment: {{{enjoyment}}}
+  - Last night's sleep: {{{sleep}}}
+
+  Based on this, provide a concise summary and one or two actionable, positive insights. Focus on connections between their activities and mood. For example, if they felt good and got fresh air, highlight that connection. If they felt bad and didn't connect with anyone, gently suggest that might be a factor.
+  `,
 });
 
 const summarizeActivityLogsFlow = ai.defineFlow(
