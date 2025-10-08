@@ -17,6 +17,10 @@
           "type": "string",
           "format": "email",
           "description": "The user's email address."
+        },
+        "isModerator": {
+            "type": "boolean",
+            "description": "Indicates if the user has moderator privileges."
         }
       },
       "required": ["firstName", "lastName", "email"]
@@ -42,6 +46,39 @@
         }
       },
       "required": ["mood", "value", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Represents a single message in the group chat.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who sent the message."
+        },
+        "userName": {
+          "type": "string",
+          "description": "The display name of the user."
+        },
+        "message": {
+          "type": "string",
+          "description": "The content of the chat message."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the message was sent."
+        },
+        "isModerator": {
+          "type": "boolean",
+          "description": "Whether the sending user is a moderator."
+        },
+        "avatarUrl": {
+            "type": "string",
+            "description": "URL for the user's avatar."
+        }
+      },
+      "required": ["userId", "userName", "message", "createdAt"]
     }
   },
   "auth": {
@@ -59,6 +96,12 @@
             "$ref": "#/entities/MoodEntry"
         },
         "description": "Stores a user's mood entries over time."
+    },
+    "/groupChatMessages/{messageId}": {
+      "schema": {
+        "$ref": "#/entities/ChatMessage"
+      },
+      "description": "Stores messages for the anonymous peer-to-peer group chat."
     }
   }
 }

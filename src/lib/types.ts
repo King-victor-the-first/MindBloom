@@ -14,12 +14,13 @@ export interface Medication {
 }
 
 export interface ChatMessage {
-  id: number;
-  user: string;
-  avatar: string;
+  id: string;
+  userId: string;
+  userName: string;
+  avatarUrl: string;
   message: string;
-  isSafe: boolean;
-  reason?: string;
+  createdAt: any;
+  isModerator?: boolean;
 }
 
 export interface MoodBooster {
@@ -38,6 +39,7 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   email: string;
+  isModerator?: boolean;
 }
 
 export interface MoodEntry {
