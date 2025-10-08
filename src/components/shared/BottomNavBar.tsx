@@ -10,8 +10,8 @@ const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/mood', label: 'Mood', icon: Smile },
   { href: '/therapy', label: 'Therapy', icon: 'siri' },
+  { href: '/activities', label: 'Journal', icon: ClipboardList },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
-  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function BottomNavBar() {
