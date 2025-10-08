@@ -73,7 +73,7 @@ export default function SpinWheel() {
                   className="absolute w-full h-full flex items-center justify-center text-primary-foreground"
                   style={{ transform: `rotate(${segmentAngle / 2}deg) translate(0, -35%)`}}
                 >
-                  <Icon className="w-8 h-8 text-black/60" style={{ transform: 'rotate(270deg)'}} />
+                  <Icon className="w-8 h-8 text-black/60" style={{ transform: 'rotate(0deg)'}} />
                 </div>
               </div>
             );
