@@ -8,12 +8,29 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Send, Loader2, ShieldAlert, CheckCircle } from "lucide-react";
+import { Send, Loader2, ShieldAlert, CheckCircle, MoreHorizontal, Trash2 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, query, orderBy, serverTimestamp, doc } from "firebase/firestore";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Badge } from "@/components/ui/badge";
 import type { UserProfile } from "@/lib/types";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 // The shape of a message document in Firestore
 type FirestoreChatMessage = {
@@ -24,22 +41,13 @@ type FirestoreChatMessage = {
     message: string;
     createdAt: any; // Firestore Timestamp
     isModerator?: boolean;
-};
-
-// The shape of a message after processing for the UI
-type DisplayMessage = {
-    id: string;
-    user: string; // userName, or "You"
-    avatar: string;
-    message: string;
-    isSafe: boolean;
-    reason?: string;
-    isModerator?: boolean;
+    isDeleted?: boolean;
 };
 
 export default function ChatInterface() {
   const [input, setInput] = useState("");
   const [moderationLoading, setModerationLoading] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
@@ -107,6 +115,7 @@ export default function ChatInterface() {
         message: input,
         createdAt: serverTimestamp(),
         isModerator: userProfile?.isModerator === true,
+        isDeleted: false,
       };
 
       const messagesCollectionRef = collection(firestore, "groupChatMessages");
@@ -127,6 +136,20 @@ export default function ChatInterface() {
     }
   };
 
+  const handleDeleteMessage = (messageId: string) => {
+    if (!user) return;
+    const messageDocRef = doc(firestore, "groupChatMessages", messageId);
+    updateDocumentNonBlocking(messageDocRef, {
+        message: "This message was deleted.",
+        isDeleted: true,
+    });
+    setDeleteConfirmation(null);
+    toast({
+      title: "Message Deleted",
+      description: "Your message has been removed.",
+    });
+  };
+
   const loading = moderationLoading || messagesLoading;
 
   return (
@@ -144,8 +167,8 @@ export default function ChatInterface() {
                 <div
                 key={msg.id}
                 className={cn(
-                    "flex items-start gap-3",
-                    isYou && "flex-row-reverse"
+                    "flex items-start gap-3 group",
+                    isYou ? "flex-row-reverse" : ""
                 )}
                 >
                 <Avatar className="w-8 h-8">
@@ -154,29 +177,63 @@ export default function ChatInterface() {
                 </Avatar>
                 <div
                     className={cn(
-                    "max-w-xs md:max-w-md p-3 rounded-xl",
+                    "max-w-xs md:max-w-md p-3 rounded-xl relative",
                     isYou
                         ? "bg-primary text-primary-foreground rounded-br-none"
-                        : "bg-card text-card-foreground rounded-bl-none"
+                        : "bg-card text-card-foreground rounded-bl-none",
+                    msg.isDeleted && "italic text-muted-foreground bg-transparent"
                     )}
                 >
-                    <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-sm">{isYou ? "You" : msg.userName}</p>
-                        {msg.isModerator && (
-                            <Badge variant="secondary" className="h-5 px-1.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Mod
-                            </Badge>
-                        )}
-                    </div>
+                    {!isYou && !msg.isDeleted && (
+                        <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold text-sm">{msg.userName}</p>
+                            {msg.isModerator && (
+                                <Badge variant="secondary" className="h-5 px-1.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Mod
+                                </Badge>
+                            )}
+                        </div>
+                    )}
                     
                     <p className="text-sm">{msg.message}</p>
                 </div>
+                {isYou && !msg.isDeleted && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => setDeleteConfirmation(msg.id)} className="text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
                 </div>
             )
           })}
         </div>
       </ScrollArea>
+       <AlertDialog open={!!deleteConfirmation} onOpenChange={(open) => !open && setDeleteConfirmation(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this message for everyone. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDeleteMessage(deleteConfirmation!)} className={cn(buttonVariants({variant: "destructive"}))}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="p-4 bg-card border-t">
         <div className="flex items-center gap-2">
           <Input

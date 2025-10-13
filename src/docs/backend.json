@@ -76,6 +76,10 @@
         "avatarUrl": {
             "type": "string",
             "description": "URL for the user's avatar."
+        },
+        "isDeleted": {
+            "type": "boolean",
+            "description": "Flag for soft-deleted messages."
         }
       },
       "required": ["userId", "userName", "message", "createdAt"]
