@@ -1,37 +1,37 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the requesting user is a moderator.
-    function isModerator() {
-      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+    // Helper function to check if a user is a moderator
+    function isModerator(userId) {
+      return exists(/databases/$(database)/documents/userProfiles/$(userId)) &&
+             get(/databases/$(database)/documents/userProfiles/$(userId)).data.isModerator == true;
     }
 
     // User Profiles:
-    // - Users can read their own profile.
-    // - Moderators can read any profile.
-    // - Users can create/update their own profile.
-    // - Moderators can delete any profile.
+    // - Users can read and update their own profile.
+    // - Moderators can read, update, and delete any user profile.
     match /userProfiles/{userId} {
-      allow read: if request.auth.uid == userId || isModerator();
-      allow write: if request.auth.uid == userId;
-      allow delete: if isModerator();
+      allow read, update: if request.auth.uid == userId || isModerator(request.auth.uid);
+      allow create: if request.auth.uid == userId;
+      allow delete: if isModerator(request.auth.uid);
     }
 
     // Mood Entries:
-    // - Users can only read and write their own mood entries.
+    // - Users can only perform actions on their own mood entries.
     match /userProfiles/{userId}/moodEntries/{entryId} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write, create, delete: if request.auth.uid == userId;
     }
 
     // Group Chat Messages:
-    // - Any authenticated user can read the entire chat collection.
-    // - Any authenticated user can create new messages.
+    // - Any authenticated user can read the chat history.
+    // - Any authenticated user can create a new message.
+    // - No one can update or delete messages.
     match /groupChatMessages/{messageId} {
       allow list, get: if request.auth != null;
       allow create: if request.auth != null;
+      allow update, delete: if false;
     }
   }
 }
