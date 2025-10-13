@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
-import { collection, doc, query, where } from "firebase/firestore";
+import { collection, doc, query } from "firebase/firestore";
 import type { UserProfile } from "@/lib/types";
 import { updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { Loader2, Trash2, CheckCircle, Shield } from "lucide-react";
+import { Loader2, Trash2, CheckCircle, Shield, ShieldOff } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -29,6 +30,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+// Designated super admin UID for failsafe access
+const SUPER_ADMIN_UID = 'BzsBHchaPEYuHwuhqlMiwRaMbBJ2'; 
 const SUPER_ADMIN_EMAIL = 'victorehebhoria@gmail.com';
 
 export default function AdminDashboard() {
@@ -36,13 +39,13 @@ export default function AdminDashboard() {
   const { user: authUser } = useUser();
   const { toast } = useToast();
 
-  const isSuperAdmin = authUser?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = authUser?.uid === SUPER_ADMIN_UID;
 
+  // Only attempt to query all users if the logged-in user is the super admin.
   const usersQuery = useMemoFirebase(() => {
-    if (!authUser) return null;
-    // This query is now secured by rules that require the user to be a moderator.
+    if (!authUser || !isSuperAdmin) return null;
     return query(collection(firestore, "userProfiles"));
-  }, [firestore, authUser]);
+  }, [firestore, authUser, isSuperAdmin]);
 
   const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
 
@@ -83,6 +86,19 @@ export default function AdminDashboard() {
     });
   };
 
+  if (!isSuperAdmin) {
+    return (
+       <Card>
+        <CardContent className="pt-6 text-center">
+            <ShieldOff className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold">Access Denied</h2>
+            <p className="text-muted-foreground mt-2">
+              You do not have permission to manage users.
+            </p>
+        </CardContent>
+       </Card>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -125,7 +141,7 @@ export default function AdminDashboard() {
                         size="sm"
                         onClick={() => toggleModerator(user)}
                         className="mr-2"
-                        disabled={user.email === SUPER_ADMIN_EMAIL && !isSuperAdmin}
+                        disabled={user.email === SUPER_ADMIN_EMAIL && authUser?.email !== SUPER_ADMIN_EMAIL}
                     >
                         <Shield className="w-4 h-4 mr-2" />
                         {user.isModerator ? "Remove Mod" : "Make Mod"}
