@@ -1,43 +1,35 @@
 
 'use client';
 
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import type { UserProfile } from "@/lib/types";
+import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { Loader2, ShieldOff } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Designated super admin email for failsafe access
 const SUPER_ADMIN_EMAIL = 'victorehebhoria@gmail.com';
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
   const router = useRouter();
-
-  const userProfileRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, "userProfiles", user.uid);
-  }, [firestore, user]);
-
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
-
-  const isLoading = isUserLoading || isProfileLoading;
-  
-  // Combine checks for moderator status
-  const isModerator = userProfile?.isModerator === true || user?.email === SUPER_ADMIN_EMAIL;
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // If loading is finished and the user is definitively not a moderator, redirect.
-    if (!isLoading && !isModerator) {
-      router.push('/dashboard');
+    if (!isUserLoading) {
+      const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+      if (isSuperAdmin) {
+        setIsAuthorized(true);
+      } else {
+        router.push('/dashboard');
+      }
+      setIsChecking(false);
     }
-  }, [isLoading, isModerator, router]);
+  }, [isUserLoading, user, router]);
 
 
-  if (isLoading) {
+  if (isChecking || isUserLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -45,9 +37,7 @@ export default function AdminPage() {
     );
   }
 
-  // This part will only be reached if loading is complete.
-  // We double-check the moderator status to prevent flicker.
-  if (!isModerator) {
+  if (!isAuthorized) {
      return (
       <div className="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8 text-center">
         <ShieldOff className="w-16 h-16 text-destructive mx-auto mb-4" />
