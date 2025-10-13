@@ -1,44 +1,25 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to check if the user is the owner of the document
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Helper function to check if the user is a moderator
-    function isModerator() {
-      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
-    }
-
-    // Rules for user profiles
+    // Moderators can read/delete any user profile.
+    // Regular users can only read and write their own.
     match /userProfiles/{userId} {
-      // Users can read and write to their own profile.
-      // Moderators can read, write, and delete any user's profile.
-      allow read, write: if isAuthenticated() && (isOwner(userId) || isModerator());
-      allow delete: if isAuthenticated() && isModerator();
+      allow get, list, delete: if get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Rules for user-specific mood entries
+    // Users can read and write their own mood entries.
+    // The 'list' permission is crucial for querying the collection for the chart.
     match /userProfiles/{userId}/moodEntries/{entryId} {
-      // Users can read and write to their own mood entries.
-      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow list, create: if request.auth.uid == userId;
+      allow get, update, delete: if request.auth.uid == userId && exists(/databases/$(database)/documents/userProfiles/$(userId));
     }
 
-    // Rules for the public group chat
+    // Public chat messages can be read and created by any authenticated user.
     match /groupChatMessages/{messageId} {
-      // Any authenticated user can read the entire collection (list) and get individual messages.
-      allow list, get: if isAuthenticated();
-      // Any authenticated user can create a new message.
-      allow create: if isAuthenticated();
+      allow read, create: if request.auth != null;
     }
   }
 }
