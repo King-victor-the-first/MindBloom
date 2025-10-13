@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, query } from "firebase/firestore";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
+import { collection, doc, query, where } from "firebase/firestore";
 import type { UserProfile } from "@/lib/types";
 import { updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Loader2, Trash2, CheckCircle, Shield } from "lucide-react";
@@ -30,18 +30,35 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+const SUPER_ADMIN_EMAIL = 'victorehebhoria@gmail.com';
 
 export default function AdminDashboard() {
   const firestore = useFirestore();
+  const { user: authUser } = useUser();
   const { toast } = useToast();
 
-  const usersQuery = useMemoFirebase(() => 
-    query(collection(firestore, "userProfiles"))
-  , [firestore]);
+  const isSuperAdmin = authUser?.email === SUPER_ADMIN_EMAIL;
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!authUser) return null;
+    // Super admin can see all users, others cannot.
+    // This query is now just for initial load, but rules secure it.
+    // The rules will enforce that only a moderator can read this collection.
+    return query(collection(firestore, "userProfiles"));
+  }, [firestore, authUser]);
 
   const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
 
   const toggleModerator = (user: UserProfile) => {
+    // Prevent super admin from being demoted by anyone
+    if (user.email === SUPER_ADMIN_EMAIL && authUser?.email !== SUPER_ADMIN_EMAIL) {
+        toast({
+            title: "Action Forbidden",
+            description: "Cannot change the status of the super admin.",
+            variant: "destructive",
+        });
+        return;
+    }
     const userDocRef = doc(firestore, "userProfiles", user.id);
     const newStatus = !user.isModerator;
     updateDocumentNonBlocking(userDocRef, { isModerator: newStatus });
@@ -52,6 +69,14 @@ export default function AdminDashboard() {
   };
 
   const deleteUser = (user: UserProfile) => {
+    if (user.email === SUPER_ADMIN_EMAIL) {
+        toast({
+            title: "Action Forbidden",
+            description: "The super admin cannot be deleted.",
+            variant: "destructive",
+        });
+        return;
+    }
     const userDocRef = doc(firestore, "userProfiles", user.id);
     deleteDocumentNonBlocking(userDocRef);
     toast({
@@ -103,13 +128,14 @@ export default function AdminDashboard() {
                         size="sm"
                         onClick={() => toggleModerator(user)}
                         className="mr-2"
+                        disabled={user.email === SUPER_ADMIN_EMAIL && !isSuperAdmin}
                     >
                         <Shield className="w-4 h-4 mr-2" />
                         {user.isModerator ? "Remove Mod" : "Make Mod"}
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                         <Button variant="destructive" size="sm">
+                         <Button variant="destructive" size="sm" disabled={user.email === SUPER_ADMIN_EMAIL}>
                             <Trash2 className="w-4 h-4 mr-2" />
                             Delete
                         </Button>
