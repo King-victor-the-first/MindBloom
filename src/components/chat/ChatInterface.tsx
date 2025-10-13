@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
+import NextImage from "next/image";
 import { moderateGroupChatMessage } from "@/ai/flows/moderate-group-chat";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Send, Loader2, ShieldAlert, CheckCircle, MoreHorizontal, Trash2, Reply, X, Paperclip } from "lucide-react";
+import { Send, Loader2, MoreHorizontal, Trash2, Reply, X, Image } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, query, orderBy, serverTimestamp, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -113,7 +113,7 @@ export default function ChatInterface() {
       const displayName = userProfile?.firstName ? `${userProfile.firstName} ${userProfile.lastName?.[0] || ''}.` : user.displayName || 'Anonymous';
       const isModerator = userProfile?.isModerator === true;
 
-      const newMessage: Omit<ChatMessage, 'id'> = {
+      const newMessage: Omit<ChatMessage, 'id' | 'mediaUrl' | 'mediaType'> & { mediaUrl?: string, mediaType?: string } = {
         userId: user.uid,
         userName: displayName,
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
@@ -215,8 +215,8 @@ export default function ChatInterface() {
                     className={cn(
                     "max-w-xs md:max-w-md p-3 rounded-xl relative",
                      isYou
-                        ? "bg-primary text-primary-foreground rounded-br-none"
-                        : "bg-card text-card-foreground rounded-bl-none",
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card text-card-foreground",
                      msg.isDeleted && "italic text-muted-foreground bg-transparent p-1",
                      showAvatarAndName ? (isYou ? "rounded-br-none" : "rounded-bl-none") : "rounded-lg"
                     )}
@@ -226,7 +226,7 @@ export default function ChatInterface() {
                             <p className="font-semibold text-sm">{msg.userName}</p>
                             {msg.isModerator && (
                                 <Badge variant="secondary" className="h-5 px-1.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700">
-                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    <Reply className="w-3 h-3 mr-1" />
                                     Mod
                                 </Badge>
                             )}
@@ -241,7 +241,7 @@ export default function ChatInterface() {
                     )}
                     
                     {msg.mediaUrl && !msg.isDeleted && msg.mediaType?.startsWith('image/') && (
-                        <Image src={msg.mediaUrl} alt="Shared media" width={200} height={200} className="rounded-md mb-2 object-cover" />
+                        <NextImage src={msg.mediaUrl} alt="Shared media" width={200} height={200} className="rounded-md mb-2 object-cover" />
                     )}
 
                     <p className="text-sm">{msg.message}</p>
@@ -313,7 +313,7 @@ export default function ChatInterface() {
         )}
         <div className="flex items-center gap-2">
            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={loading}>
-            <Paperclip className="w-5 h-5" />
+            <Image className="w-5 h-5" />
           </Button>
           <Input 
             type="file" 
@@ -337,3 +337,5 @@ export default function ChatInterface() {
     </div>
   );
 }
+
+    
