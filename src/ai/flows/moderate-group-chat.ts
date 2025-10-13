@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -42,7 +43,8 @@ const moderationPrompt = ai.definePrompt({
   Guidelines:
   - No hate speech, harassment, or discrimination.
   - No threats of violence or promotion of harmful activities.
-  - No sharing of personal information or attempts to identify other users.
+  - No sharing of personal identifying information (PII) such as real full names, email addresses, phone numbers, or physical addresses. Do not flag random strings or character sequences that are not clearly PII.
+  - No attempts to identify other users.
   - No sexually explicit content or exploitation, abuse, or endangerment of children.
   - No spam or phishing attempts.
   - No illegal activities.
