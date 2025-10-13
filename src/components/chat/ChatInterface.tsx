@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Send, Loader2, ShieldAlert, CheckCircle, MoreHorizontal, Trash2, Reply, X, Paperclip } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
-import { collection, query, orderBy, serverTimestamp, doc, updateDoc } from "firebase/firestore";
+import { collection, query, orderBy, serverTimestamp, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { uploadFile } from "@/firebase/storage";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +96,7 @@ export default function ChatInterface() {
           variant: "destructive",
         });
         setInput("");
+        setMediaFile(null);
         return;
       }
       
@@ -108,14 +109,11 @@ export default function ChatInterface() {
         mediaType = mediaFile.type;
       }
 
-      const displayName = user.displayName || 'Anonymous';
-      const [firstName, ...lastNameParts] = displayName.split(' ');
-      const lastNameInitial = lastNameParts.length > 0 ? `${lastNameParts[0][0]}.` : '';
-      const userName = `${firstName} ${lastNameInitial}`.trim();
-      
-      const newMessage: Partial<ChatMessage> = {
+      const displayName = userProfile?.firstName ? `${userProfile.firstName} ${userProfile.lastName?.[0] || ''}.` : user.displayName || 'Anonymous';
+
+      const newMessage: Omit<ChatMessage, 'id'> = {
         userId: user.uid,
-        userName: userName,
+        userName: displayName,
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
         message: input,
         createdAt: serverTimestamp(),
@@ -319,5 +317,3 @@ export default function ChatInterface() {
     </div>
   );
 }
-
-    
