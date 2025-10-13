@@ -41,17 +41,18 @@ export default function AdminDashboard() {
 
   const isSuperAdmin = authUser?.uid === SUPER_ADMIN_UID;
 
-  // Only attempt to query all users if the logged-in user is the super admin.
   const usersQuery = useMemoFirebase(() => {
-    if (!authUser || !isSuperAdmin) return null;
+    // IMPORTANT: Only query all users if the logged-in user is the super admin.
+    // This prevents permission errors for regular moderators.
+    if (!firestore || !isSuperAdmin) return null;
     return query(collection(firestore, "userProfiles"));
-  }, [firestore, authUser, isSuperAdmin]);
+  }, [firestore, isSuperAdmin]);
 
   const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
 
   const toggleModerator = (user: UserProfile) => {
-    // Prevent super admin from being demoted by anyone
-    if (user.email === SUPER_ADMIN_EMAIL && authUser?.email !== SUPER_ADMIN_EMAIL) {
+    // Super admin cannot have their status changed by this UI.
+    if (user.id === SUPER_ADMIN_UID) {
         toast({
             title: "Action Forbidden",
             description: "Cannot change the status of the super admin.",
@@ -61,7 +62,7 @@ export default function AdminDashboard() {
     }
     const userDocRef = doc(firestore, "userProfiles", user.id);
     const newStatus = !user.isModerator;
-    updateDocumentNonBlocking(userDocRef, { isModerator: newStatus });
+    updateDocumentNonBlocking(userDocRef, { isModerator: newStatus }, { merge: true });
     toast({
       title: "User Updated",
       description: `${user.firstName} is ${newStatus ? 'now' : 'no longer'} a moderator.`,
@@ -69,7 +70,7 @@ export default function AdminDashboard() {
   };
 
   const deleteUser = (user: UserProfile) => {
-    if (user.email === SUPER_ADMIN_EMAIL) {
+    if (user.id === SUPER_ADMIN_UID) {
         toast({
             title: "Action Forbidden",
             description: "The super admin cannot be deleted.",
@@ -86,6 +87,7 @@ export default function AdminDashboard() {
     });
   };
 
+  // Regular moderators or non-admins see a restricted view.
   if (!isSuperAdmin) {
     return (
        <Card>
@@ -93,7 +95,7 @@ export default function AdminDashboard() {
             <ShieldOff className="w-12 h-12 text-destructive mx-auto mb-4" />
             <h2 className="text-xl font-bold">Access Denied</h2>
             <p className="text-muted-foreground mt-2">
-              You do not have permission to manage users.
+              You do not have permission to view the full user list.
             </p>
         </CardContent>
        </Card>
@@ -126,7 +128,9 @@ export default function AdminDashboard() {
                 <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                  {user.isModerator ? (
+                   {user.id === SUPER_ADMIN_UID ? (
+                     <Badge variant="destructive">Super Admin</Badge>
+                   ) : user.isModerator ? (
                     <Badge variant="secondary" className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700">
                         <CheckCircle className="w-3 h-3 mr-1" />
                         Moderator
@@ -141,14 +145,14 @@ export default function AdminDashboard() {
                         size="sm"
                         onClick={() => toggleModerator(user)}
                         className="mr-2"
-                        disabled={user.email === SUPER_ADMIN_EMAIL && authUser?.email !== SUPER_ADMIN_EMAIL}
+                        disabled={user.id === SUPER_ADMIN_UID}
                     >
                         <Shield className="w-4 h-4 mr-2" />
                         {user.isModerator ? "Remove Mod" : "Make Mod"}
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                         <Button variant="destructive" size="sm" disabled={user.email === SUPER_ADMIN_EMAIL}>
+                         <Button variant="destructive" size="sm" disabled={user.id === SUPER_ADMIN_UID}>
                             <Trash2 className="w-4 h-4 mr-2" />
                             Delete
                         </Button>

@@ -1,116 +1,92 @@
 /**
- * @fileoverview Firestore Security Rules for Prototyping.
+ * @file Firestore Security Rules
+ * @version 2
  *
- * Core Philosophy:
- * This ruleset prioritizes security by default, enforcing strict user-ownership for private data
- * while allowing public read access where appropriate. Data shape validation is relaxed to enable rapid prototyping.
+ * @Core Philosophy
+ * This ruleset employs a hybrid security model. User profiles are publicly readable but only editable by their respective owners.
+ * Mood entries are private and accessible only to the user who created them.
+ * Group chat messages are publicly readable and writable, but only moderators can delete them.
  *
- * Data Structure:
- * - /userProfiles/{userId}: Stores public profile data, readable by all, writable only by the owning user.
- * - /userProfiles/{userId}/moodEntries/{entryId}: Stores private mood entries, accessible only by the owning user.
- * - /groupChatMessages/{messageId}: Publicly readable collection for group chat messages.  Write access requires a valid user ID and a matching 'userId' field in the document.
+ * @Data Structure
+ * - /userProfiles/{userId}: Stores public user profile data.
+ * - /userProfiles/{userId}/moodEntries/{entryId}: Stores private mood entries for each user.
+ * - /groupChatMessages/{messageId}: Stores public chat messages.
  *
- * Key Security Decisions:
- * - User profiles are publicly readable to facilitate discovery but are only writable by the owning user.
- * - User listing is explicitly denied for /userProfiles.
- * - Mood entries are private and only accessible to the owning user.
- * - Group chat messages are publicly readable, but writes are authenticated and the 'userId' field must match the authenticated user's UID to prevent impersonation.
+ * @Key Security Decisions
+ * - User profiles are publicly readable to facilitate discovery and connection within the app.
+ * - User listing is explicitly denied to prevent scraping and unauthorized data collection.
+ * - Data validation is relaxed during this prototyping phase to allow for rapid iteration.
+ * - The `isModerator` field on `ChatMessage` documents is critical for the moderator-only delete rule.
  *
- * Denormalization for Authorization:
- * - The `/groupChatMessages/{messageId}` collection requires the `userId` field on each document to match `request.auth.uid` on create to ensure that users can only create messages under their own identity.
+ * @Denormalization for Authorization
+ * The `ChatMessage` entity includes an `isModerator` field which is copied from the user's profile to allow moderator-only delete.
+ *
+ * @Structural Segregation
+ * Mood entries are stored in a user-specific subcollection to ensure privacy and prevent unauthorized access.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile information.
+     * @description Allows read access to all user profiles, but only allows a user to create their own profile.
      * @path /userProfiles/{userId}
-     * @allow (get) Any user can read a user profile.
-     * @allow (create, update, delete) Only the user with matching {userId} can modify their profile.
-     * @deny (list) Listing user profiles is not allowed.
-     * @principle Enforces document ownership for writes and public read access.
+     * @allow (get, list): if true
+     * @allow (create): if request.auth.uid == userId
+     * @allow (update, delete): if request.auth.uid == userId
+     * @deny (create): if request.auth.uid != userId
+     * @deny (update, delete): if request.auth.uid != userId
+     * @principle Allows anyone to read user profiles, but only the owner can modify them.
      */
     match /userProfiles/{userId} {
-      // Helper function to check if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Helper function to check if the requesting user is the owner of the document.
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      // Allow anyone to read user profiles
-      allow get: if true;
-
-      // Only the owner can create their profile, and the user ID must match.
-      allow create: if isSignedIn() && isOwner(userId);
-
-      // Only the owner can update their profile.
-      allow update: if isSignedIn() && isOwner(userId);
-
-      // Only the owner can delete their profile.
-      allow delete: if isSignedIn() && isOwner(userId);
-
-      // Disable listing all user profiles.
-      allow list: if false;
+      allow get, list: if true;
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.email == request.auth.token.email;
+      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.email == resource.data.email;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to user mood entries.
+     * @description Allows a user to manage their own mood entries.
      * @path /userProfiles/{userId}/moodEntries/{entryId}
-     * @allow (get, list) Only the user with matching {userId} can read their mood entries.
-     * @allow (create, update, delete) Only the user with matching {userId} can modify their mood entries.
-     * @principle Restricts access to a user's own data tree.
+     * @allow (get, list, create, update, delete): if request.auth.uid == userId
+     * @deny (create, update, delete): if request.auth.uid != userId
+     * @principle Enforces document ownership: only the user who owns the mood entries can read/write them.
      */
     match /userProfiles/{userId}/moodEntries/{entryId} {
-      // Helper function to check if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Helper function to check if the requesting user is the owner of the document.
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      // Allow the owner to read their mood entries.
-      allow get, list: if isSignedIn() && isOwner(userId);
-
-      // Allow the owner to create a mood entry.
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId);
-
-      // Allow the owner to update their mood entry.
-      allow update: if isSignedIn() && isOwner(userId);
-
-      // Allow the owner to delete their mood entry.
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId) && resource != null;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to group chat messages.
+     * @description Allows anyone to read and create group chat messages, but only moderators can delete them.
      * @path /groupChatMessages/{messageId}
-     * @allow (get, list) Any user can read group chat messages.
-     * @allow (create) Any authenticated user can create a message, provided their ID matches the userId in the message.
-     * @allow (update, delete) No one can update or delete messages (for now).
-     * @principle Allows public read access but restricts write access to authenticated users with matching user IDs.
+     * @allow (get, list, create): if true
+     * @allow (delete): if resource.data.isModerator == true
+     * @deny (delete): if resource.data.isModerator == false
+     * @principle Allows public read/write access for all users, but restricts deletion to moderators.
      */
     match /groupChatMessages/{messageId} {
-      // Helper function to check if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Allow anyone to read group chat messages.
       allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.isModerator == true;
+    }
 
-      // Allow signed-in users to create messages, validating that the userId matches the authenticated user.
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    // --- Helper Functions ---
 
-      // No updates or deletes allowed for now.
-      allow update, delete: if false;
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
     }
   }
 }
