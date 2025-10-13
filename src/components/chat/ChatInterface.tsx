@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { moderateGroupChatMessage } from "@/ai/flows/moderate-group-chat";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
