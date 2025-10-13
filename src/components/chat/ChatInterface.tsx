@@ -131,7 +131,7 @@ export default function ChatInterface() {
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
         message: input,
         createdAt: serverTimestamp(),
-        isModerator: isModerator,
+        isModerator,
         isDeleted: false,
         mediaUrl,
         mediaType,
