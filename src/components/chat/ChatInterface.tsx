@@ -110,18 +110,6 @@ export default function ChatInterface() {
         return;
       }
       
-      let mediaUrl: string | undefined;
-      let mediaType: string | undefined;
-
-      if (mediaFile) {
-        if (!storage) {
-            throw new Error("Storage service is not available.");
-        }
-        const { downloadURL } = await uploadFile(storage, mediaFile, `chat/${user.uid}/${Date.now()}_${mediaFile.name}`);
-        mediaUrl = downloadURL;
-        mediaType = mediaFile.type;
-      }
-
       const displayName = userProfile?.firstName ? `${userProfile.firstName} ${userProfile.lastName?.[0] || ''}.` : user.displayName || 'Anonymous';
       const isModerator = userProfile?.isModerator === true;
 
@@ -133,9 +121,16 @@ export default function ChatInterface() {
         createdAt: serverTimestamp(),
         isModerator,
         isDeleted: false,
-        mediaUrl,
-        mediaType,
       };
+      
+      if (mediaFile) {
+        if (!storage) {
+            throw new Error("Storage service is not available.");
+        }
+        const { downloadURL } = await uploadFile(storage, mediaFile, `chat/${user.uid}/${Date.now()}_${mediaFile.name}`);
+        newMessage.mediaUrl = downloadURL;
+        newMessage.mediaType = mediaFile.type;
+      }
 
       if (replyTo) {
         newMessage.replyTo = {
@@ -331,5 +326,3 @@ export default function ChatInterface() {
     </div>
   );
 }
-
-    
