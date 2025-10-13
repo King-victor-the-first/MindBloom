@@ -23,15 +23,15 @@ export default function DisclaimerDialog({ onAgree }: DisclaimerDialogProps) {
                         Important Disclaimer
                     </AlertDialogTitle>
                     <AlertDialogDescription className="pt-4 space-y-3 text-left">
-                        <p>
+                        <div>
                             MindBloom offers AI-powered conversations for wellness support and is not a substitute for professional medical advice, diagnosis, or treatment.
-                        </p>
-                        <p>
+                        </div>
+                        <div>
                             This is an MVP and the AI may produce inaccurate or unintended information. It is not intended for use in crisis situations.
-                        </p>
-                        <p>
+                        </div>
+                        <div>
                             If you are in a crisis, please contact a local emergency service immediately.
-                        </p>
+                        </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
