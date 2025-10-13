@@ -1,92 +1,37 @@
-/**
- * @fileoverview Firestore Security Rules for the Mood Tracker application.
- *
- * Core Philosophy:
- * This ruleset prioritizes user data privacy and restricts access based on ownership and role-based authorization.
- *
- * Data Structure:
- * - User profiles are stored under `/userProfiles/{userId}`.
- * - Mood entries are stored as subcollections under each user's profile: `/userProfiles/{userId}/moodEntries/{entryId}`.
- * - Group chat messages are stored in a top-level collection `/groupChatMessages/{messageId}` and are publicly readable.
- *
- * Key Security Decisions:
- * - User listing is disabled to protect user privacy.
- * - Mood entries are strictly owned by the user.
- * - Group chat messages are publicly readable, but creation is restricted to authenticated users.
- * - Moderators have no special privileges in the group chat.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * @description Checks if the request is made by a signed-in user.
-     */
-    function isSignedIn() {
-      return request.auth != null;
+    
+    // Allow moderators to list all user profiles for the admin dashboard
+    match /userProfiles/{document=**} {
+      allow list: if get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
     }
 
-    /**
-     * @description Checks if the request is made by the owner of the resource.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the request is made by the owner of the existing resource.
-     */
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rules for user profiles.
-     * @path /userProfiles/{userId}
-     * @allow (create) User with ID 'user123' can create their own profile.
-     * @allow (get) Any user can read another user's profile.
-     * @deny (create) User with ID 'user456' cannot create a profile for 'user123'.
-     * @deny (update) User with ID 'user456' cannot update the profile for 'user123'.
-     * @principle Enforces document ownership for writes, public read access.
-     */
+    // Rules for a single user's profile
     match /userProfiles/{userId} {
-      allow get: if true;
-      allow list: if false; // User listing is not allowed.
-      allow create: if isOwner(userId) && request.resource.data.email is string;
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      // A user can get and update their own profile
+      allow get, update: if request.auth.uid == userId;
+
+      // Moderators can get and update any user's profile
+      allow get, update: if get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+      
+      // A user can create their own profile. A moderator can also create profiles.
+      allow create: if request.auth.uid == userId || get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+
+      // Moderators can delete users.
+      allow delete: if get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+
+      // Rules for the moodEntries subcollection
+      match /moodEntries/{entryId} {
+        // A user can read and write their own mood entries.
+        allow read, write: if request.auth.uid == userId;
+      }
     }
 
-    /**
-     * @description Rules for mood entries.
-     * @path /userProfiles/{userId}/moodEntries/{entryId}
-     * @allow (create) User with ID 'user123' can create a mood entry under their profile.
-     * @deny (create) User with ID 'user456' cannot create a mood entry under 'user123' profile.
-     * @principle Restricts access to a user's own data tree.
-     */
-    match /userProfiles/{userId}/moodEntries/{entryId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Rules for group chat messages.
-     * @path /groupChatMessages/{messageId}
-     * @allow (get) Any user can read group chat messages.
-     * @allow (create) Any signed-in user can create a group chat message.
-     * @deny (update) No user can update a group chat message.
-     * @deny (delete) No user can delete a group chat message.
-     * @principle Public read access, authenticated writes.
-     */
+    // Rules for the groupChatMessages collection
     match /groupChatMessages/{messageId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn();
-      allow update: if false;
-      allow delete: if false;
+      // Any authenticated user can read (get, list) and create messages.
+      allow read, create: if request.auth != null;
     }
   }
 }
