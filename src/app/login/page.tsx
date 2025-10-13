@@ -144,7 +144,7 @@ export default function LoginPage() {
       );
       const user = userCredential.user;
 
-      const isSuperAdmin = values.email === SUPER_ADMIN_EMAIL;
+      const isSuperAdmin = values.email.toLowerCase() === SUPER_ADMIN_EMAIL;
 
       const userProfile: UserProfile = {
         id: user.uid,
@@ -213,7 +213,7 @@ export default function LoginPage() {
         const [firstName, ...lastNameParts] = displayName.split(' ');
         const lastName = lastNameParts.join(' ');
         
-        const isSuperAdmin = user.email === SUPER_ADMIN_EMAIL;
+        const isSuperAdmin = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
 
         const userProfile: UserProfile = {
           id: user.uid,
@@ -428,5 +428,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
