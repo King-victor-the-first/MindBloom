@@ -3,41 +3,32 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is a moderator.
-    function isModerator() {
-      // A user is a moderator if their profile has isModerator set to true.
-      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+    // Grant moderators the ability to list all user profiles for the admin dashboard.
+    // This rule is applied to the collection path.
+    match /userProfiles/{document=**} {
+      allow list: if get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
     }
 
-    // Rules for user profile documents.
+    // Rules for accessing a single user profile document.
     match /userProfiles/{userId} {
-      // Allow authenticated users to read their own profile.
-      allow get: if request.auth.uid == userId;
-
-      // Allow authenticated users to create/update their own profile.
-      // Also, allow moderators to update any user's profile (e.g., to make them a mod).
-      allow write: if request.auth.uid == userId || isModerator();
+      // A user can get or write to their own profile.
+      allow get, write: if request.auth.uid == userId;
       
-      // Allow moderators to list all user profiles for the admin dashboard.
-      allow list: if isModerator();
-
-      // Allow moderators to delete any user.
-      allow delete: if isModerator();
-
-      // Rules for a user's mood entries (subcollection).
+      // A moderator can get or write to any user's profile.
+      allow get, write: if get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+      
+      // Rules for the 'moodEntries' subcollection within a user's profile.
       match /moodEntries/{entryId} {
-        // Allow a user to manage their own mood entries.
-        allow read, write, create, delete: if request.auth.uid == userId;
+        // A user can read and write their own mood entries.
+        allow read, write: if request.auth.uid == userId;
       }
     }
 
     // Rules for the group chat messages.
     match /groupChatMessages/{messageId} {
-      // Allow any authenticated user to read all messages.
+      // Any authenticated user can read all messages.
       allow read: if request.auth != null;
-
-      // Allow authenticated users to create messages.
-      // Do not allow updates or deletes from the client-side for data integrity.
+      // An authenticated user can create messages.
       allow create: if request.auth != null;
     }
   }
