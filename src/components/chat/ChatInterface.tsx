@@ -141,7 +141,9 @@ export default function ChatInterface() {
       }
 
       const messagesCollectionRef = collection(firestore, "groupChatMessages");
-      await addDocumentNonBlocking(messagesCollectionRef, newMessage);
+      await addDocumentNonBlocking(messagesCollectionRef, newMessage).catch(err => {
+        throw err;
+      });
 
       setInput("");
       setReplyTo(null);
@@ -181,36 +183,45 @@ export default function ChatInterface() {
   return (
     <div className="flex-1 flex flex-col bg-muted/30">
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="space-y-6">
+        <div className="space-y-1">
           {messagesLoading && (
             <div className="flex justify-center items-center h-full">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           )}
-          {messages && messages.map((msg) => {
+          {messages && messages.map((msg, index) => {
             const isYou = msg.userId === user?.uid;
+            const prevMsg = messages[index - 1];
+            const showAvatarAndName = !prevMsg || prevMsg.userId !== msg.userId;
+
             return (
                 <div
                 key={msg.id}
                 className={cn(
                     "flex items-start gap-3 group",
-                    isYou ? "flex-row-reverse" : ""
+                    isYou ? "flex-row-reverse" : "",
+                    !showAvatarAndName && (isYou ? "ml-11" : "ml-11")
                 )}
                 >
-                <Avatar className="w-8 h-8">
-                    <AvatarImage src={msg.avatarUrl} />
-                    <AvatarFallback>{msg.userName?.substring(0, 2) || 'A'}</AvatarFallback>
-                </Avatar>
+                <div className="w-8 h-8 flex-shrink-0">
+                  {showAvatarAndName && (
+                    <Avatar className="w-8 h-8">
+                        <AvatarImage src={msg.avatarUrl} />
+                        <AvatarFallback>{msg.userName?.substring(0, 2) || 'A'}</AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
                 <div
                     className={cn(
                     "max-w-xs md:max-w-md p-3 rounded-xl relative",
-                    isYou
+                     isYou
                         ? "bg-primary text-primary-foreground rounded-br-none"
                         : "bg-card text-card-foreground rounded-bl-none",
-                    msg.isDeleted && "italic text-muted-foreground bg-transparent p-1"
+                     msg.isDeleted && "italic text-muted-foreground bg-transparent p-1",
+                     showAvatarAndName ? (isYou ? "rounded-br-none" : "rounded-bl-none") : "rounded-lg"
                     )}
                 >
-                    {!isYou && !msg.isDeleted && (
+                    {!isYou && !msg.isDeleted && showAvatarAndName && (
                         <div className="flex items-center gap-2 mb-1">
                             <p className="font-semibold text-sm">{msg.userName}</p>
                             {msg.isModerator && (
@@ -229,7 +240,7 @@ export default function ChatInterface() {
                         </div>
                     )}
                     
-                    {msg.mediaUrl && !msg.isDeleted && (
+                    {msg.mediaUrl && !msg.isDeleted && msg.mediaType?.startsWith('image/') && (
                         <Image src={msg.mediaUrl} alt="Shared media" width={200} height={200} className="rounded-md mb-2 object-cover" />
                     )}
 
