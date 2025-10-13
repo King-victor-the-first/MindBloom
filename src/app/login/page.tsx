@@ -106,19 +106,17 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-        // After user logs in, check if they are an admin
-        const userDocRef = doc(firestore, 'userProfiles', user.uid);
-        getDoc(userDocRef).then(docSnap => {
-            if (docSnap.exists() && docSnap.data().isModerator) {
-                router.push('/admin');
-            } else {
-                router.push('/dashboard');
-            }
-        });
+        handleSuccessfulLogin(user);
     }
   }, [user, isUserLoading, router, firestore]);
 
   const handleSuccessfulLogin = async (user: User) => {
+    const isSuperAdmin = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
+    if (isSuperAdmin) {
+        router.push('/admin');
+        return;
+    }
+
     const userDocRef = doc(firestore, 'userProfiles', user.uid);
     try {
         const docSnap = await getDoc(userDocRef);
@@ -162,11 +160,8 @@ export default function LoginPage() {
         description: "You've been successfully signed up!",
       });
       
-      if(isSuperAdmin) {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
+      // Let the useEffect hook handle redirection
+      // await handleSuccessfulLogin(user);
 
     } catch (error: any) {
       toast({
@@ -187,7 +182,8 @@ export default function LoginPage() {
         title: 'Signed In',
         description: "You've successfully signed in.",
       });
-      await handleSuccessfulLogin(userCredential.user);
+      // Let the useEffect hook handle redirection
+      // await handleSuccessfulLogin(userCredential.user);
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -207,13 +203,13 @@ export default function LoginPage() {
 
       const userDocRef = doc(firestore, 'userProfiles', user.uid);
       const docSnap = await getDoc(userDocRef);
+      
+      const isSuperAdmin = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
 
       if (!docSnap.exists()) {
         const displayName = user.displayName || '';
         const [firstName, ...lastNameParts] = displayName.split(' ');
         const lastName = lastNameParts.join(' ');
-        
-        const isSuperAdmin = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
 
         const userProfile: UserProfile = {
           id: user.uid,
@@ -223,13 +219,17 @@ export default function LoginPage() {
           isModerator: isSuperAdmin,
         };
         await setDocumentNonBlocking(userDocRef, userProfile, { merge: true });
+      } else if (isSuperAdmin && !docSnap.data().isModerator) {
+        // If the user exists but isn't a moderator, and they are the super admin, update them.
+        await setDocumentNonBlocking(userDocRef, { isModerator: true }, { merge: true });
       }
       
       toast({
         title: 'Signed In',
         description: `Welcome, ${user.displayName || 'User'}!`,
       });
-      await handleSuccessfulLogin(user);
+      // Let the useEffect hook handle redirection
+      // await handleSuccessfulLogin(user);
 
     } catch (error: any) {
       toast({
@@ -428,3 +428,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
