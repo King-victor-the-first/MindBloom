@@ -146,7 +146,7 @@ export default function ChatInterface() {
       }
 
       const messagesCollectionRef = collection(firestore, "groupChatMessages");
-      addDocumentNonBlocking(messagesCollectionRef, newMessage);
+      await addDocumentNonBlocking(messagesCollectionRef, newMessage);
 
       setInput("");
       setReplyTo(null);
@@ -331,3 +331,5 @@ export default function ChatInterface() {
     </div>
   );
 }
+
+    
