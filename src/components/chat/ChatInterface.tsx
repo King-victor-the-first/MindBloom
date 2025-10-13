@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Send, Loader2, MoreHorizontal, Trash2, Reply, X, Image } from "lucide-react";
+import { Send, Loader2, MoreHorizontal, Trash2, Reply, X, Image, ShieldCheck } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, query, orderBy, serverTimestamp, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -226,7 +226,7 @@ export default function ChatInterface() {
                             <p className="font-semibold text-sm">{msg.userName}</p>
                             {msg.isModerator && (
                                 <Badge variant="secondary" className="h-5 px-1.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700">
-                                    <Reply className="w-3 h-3 mr-1" />
+                                    <ShieldCheck className="w-3 h-3 mr-1" />
                                     Mod
                                 </Badge>
                             )}
