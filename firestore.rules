@@ -3,36 +3,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is a moderator by reading their profile
+    // Helper function to check if a user is a moderator by reading their profile.
     function isModerator(userId) {
-      return exists(/databases/$(database)/documents/userProfiles/$(userId)) &&
-             get(/databases/$(database)/documents/userProfiles/$(userId)).data.isModerator == true;
+      return get(/databases/$(database)/documents/userProfiles/$(userId)).data.isModerator == true;
     }
 
-    // Rules for the userProfiles collection
+    // userProfiles:
+    // - Any authenticated user can read/write their own profile.
+    // - Moderators can read, write, delete, and LIST all profiles.
     match /userProfiles/{userId} {
-      // Allow a user to read or write to their own profile
-      allow get, update, delete: if request.auth.uid == userId;
-
-      // Allow a user to create their own profile during sign-up
-      allow create: if request.auth.uid == userId;
-      
-      // Allow moderators to read or write any user's profile
-      allow read, write: if isModerator(request.auth.uid);
-
-      // Allow moderators to list all user profiles for the admin dashboard
-      allow list: if isModerator(request.auth.uid);
+      allow read, write: if request.auth.uid == userId;
+      allow list, get, update, delete: if request.auth != null && isModerator(request.auth.uid);
     }
 
-    // Rules for moodEntries subcollection
+    // moodEntries: Users can list and manage their own mood entries.
     match /userProfiles/{userId}/moodEntries/{entryId} {
-      // Users can perform any action on their own mood entries
-      allow read, write, create, delete, list: if request.auth.uid == userId;
+      allow list, read, write: if request.auth.uid == userId;
     }
 
-    // Rules for the public group chat
+    // groupChatMessages: Any authenticated user can read the list of messages and create new ones.
     match /groupChatMessages/{messageId} {
-      // Any authenticated user can read the list of chat messages and create new ones
       allow list, get, create: if request.auth != null;
     }
   }
