@@ -41,8 +41,6 @@ export default function AdminDashboard() {
   const usersQuery = useMemoFirebase(() => {
     if (!authUser) return null;
     // This query is now secured by rules that require the user to be a moderator.
-    // The rule will check that the incoming query is filtering for moderators,
-    // which is what we are doing here. This is a secure and valid way to list users.
     return query(collection(firestore, "userProfiles"));
   }, [firestore, authUser]);
 
