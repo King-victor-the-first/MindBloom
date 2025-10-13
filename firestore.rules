@@ -3,27 +3,36 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is a moderator by reading their profile.
+    // Helper function to check if a user is a moderator.
+    // It reads the 'isModerator' flag from the user's own profile.
     function isModerator(userId) {
       return get(/databases/$(database)/documents/userProfiles/$(userId)).data.isModerator == true;
     }
 
-    // userProfiles:
-    // - Any authenticated user can read/write their own profile.
-    // - Moderators can read, write, delete, and LIST all profiles.
+    // Rules for the userProfiles collection
     match /userProfiles/{userId} {
-      allow read, write: if request.auth.uid == userId;
-      allow list, get, update, delete: if request.auth != null && isModerator(request.auth.uid);
+      // Allow a user to read and write their own profile.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Allow moderators to read, write, and list all user profiles.
+      // 'list' is crucial for the admin dashboard to display all users.
+      allow read, write, list: if request.auth != null && isModerator(request.auth.uid);
     }
 
-    // moodEntries: Users can list and manage their own mood entries.
+    // Rules for the moodEntries subcollection
     match /userProfiles/{userId}/moodEntries/{entryId} {
-      allow list, read, write: if request.auth.uid == userId;
+      // Allow a user to perform any action on their own mood entries.
+      // This includes create, get, list, update, delete.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // groupChatMessages: Any authenticated user can read the list of messages and create new ones.
+    // Rules for the groupChatMessages collection
     match /groupChatMessages/{messageId} {
-      allow list, get, create: if request.auth != null;
+      // Allow any authenticated user to read all messages.
+      allow read: if request.auth != null;
+      // Allow any authenticated user to create messages.
+      // Further validation (e.g., message content) would be handled by the AI moderation flow.
+      allow create: if request.auth != null;
     }
   }
 }
