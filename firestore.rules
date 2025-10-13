@@ -3,32 +3,35 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Function to check if a user is a moderator
-    function isModerator(userId) {
-      return get(/databases/$(database)/documents/userProfiles/$(userId)).data.isModerator == true;
+
+    // Helper function to check if the requesting user is a moderator.
+    function isModerator() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
     }
 
-    // User profiles can be read by anyone, but only written by the user themselves or a moderator.
-    // Moderators can list all users.
+    // User Profiles:
+    // - Users can read their own profile.
+    // - Moderators can read any profile.
+    // - Users can create/update their own profile.
+    // - Moderators can delete any profile.
     match /userProfiles/{userId} {
-      allow get: if request.auth != null;
-      allow list: if request.auth != null && isModerator(request.auth.uid);
-      allow write: if request.auth != null && (request.auth.uid == userId || isModerator(request.auth.uid));
-      allow delete: if request.auth != null && isModerator(request.auth.uid);
-
-      // Users can only read and write their own mood entries
-      match /moodEntries/{entryId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
+      allow read: if request.auth.uid == userId || isModerator();
+      allow write: if request.auth.uid == userId;
+      allow delete: if isModerator();
     }
 
-    // Group chat messages can be read by any authenticated user.
-    // Users can create their own messages.
-    // Moderators can delete any message.
+    // Mood Entries:
+    // - Users can only read and write their own mood entries.
+    match /userProfiles/{userId}/moodEntries/{entryId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Group Chat Messages:
+    // - Any authenticated user can read the entire chat collection.
+    // - Any authenticated user can create new messages.
     match /groupChatMessages/{messageId} {
-      allow read, create: if request.auth != null;
-      allow delete: if request.auth != null && isModerator(request.auth.uid);
+      allow list, get: if request.auth != null;
+      allow create: if request.auth != null;
     }
   }
 }
