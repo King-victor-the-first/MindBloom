@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -11,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Send, Loader2, ShieldAlert, CheckCircle, MoreHorizontal, Trash2, Reply, X, Paperclip } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
-import { collection, query, orderBy, serverTimestamp, doc } from "firebase/firestore";
+import { collection, query, orderBy, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { uploadFile } from "@/firebase/storage";
 import { Badge } from "@/components/ui/badge";
@@ -318,3 +319,5 @@ export default function ChatInterface() {
     </div>
   );
 }
+
+    
