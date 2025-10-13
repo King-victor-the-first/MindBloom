@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,8 +12,9 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   OAuthProvider,
+  User,
 } from 'firebase/auth';
-import { doc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,7 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/shared/Logo';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import type { UserProfile } from '@/lib/types';
 
 const signUpSchema = z
   .object({
@@ -71,6 +73,9 @@ const AppleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+// Designated super admin email
+const SUPER_ADMIN_EMAIL = 'victorehebhoria@gmail.com';
+
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -101,9 +106,33 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.push('/dashboard');
+        // After user logs in, check if they are an admin
+        const userDocRef = doc(firestore, 'userProfiles', user.uid);
+        getDoc(userDocRef).then(docSnap => {
+            if (docSnap.exists() && docSnap.data().isModerator) {
+                router.push('/admin');
+            } else {
+                router.push('/dashboard');
+            }
+        });
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, firestore]);
+
+  const handleSuccessfulLogin = async (user: User) => {
+    const userDocRef = doc(firestore, 'userProfiles', user.uid);
+    try {
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists() && docSnap.data().isModerator) {
+            router.push('/admin');
+        } else {
+            router.push('/dashboard');
+        }
+    } catch (error) {
+        console.error("Error checking for admin status, redirecting to dashboard:", error);
+        router.push('/dashboard');
+    }
+  };
+
 
   const handleSignUp = async (values: z.infer<typeof signUpSchema>) => {
     setLoading(true);
@@ -115,21 +144,30 @@ export default function LoginPage() {
       );
       const user = userCredential.user;
 
-      const userProfile = {
+      const isSuperAdmin = values.email === SUPER_ADMIN_EMAIL;
+
+      const userProfile: UserProfile = {
         id: user.uid,
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,
+        isModerator: isSuperAdmin,
       };
 
       const userDocRef = doc(firestore, 'userProfiles', user.uid);
-      setDocumentNonBlocking(userDocRef, userProfile, { merge: true });
+      await setDocumentNonBlocking(userDocRef, userProfile, { merge: true });
 
       toast({
         title: 'Account Created',
         description: "You've been successfully signed up!",
       });
-      router.push('/dashboard');
+      
+      if(isSuperAdmin) {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
+
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -144,12 +182,12 @@ export default function LoginPage() {
   const handleSignIn = async (values: z.infer<typeof signInSchema>) => {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
         title: 'Signed In',
         description: "You've successfully signed in.",
       });
-      router.push('/dashboard');
+      await handleSuccessfulLogin(userCredential.user);
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -167,28 +205,31 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Create user profile in Firestore if it's a new user
       const userDocRef = doc(firestore, 'userProfiles', user.uid);
-      
-      const displayName = user.displayName || '';
-      const [firstName, ...lastNameParts] = displayName.split(' ');
-      const lastName = lastNameParts.join(' ');
-      
-      const userProfile = {
-        id: user.uid,
-        firstName: firstName,
-        lastName: lastName,
-        email: user.email,
-      };
+      const docSnap = await getDoc(userDocRef);
 
-      // Use non-blocking set which also handles permission errors
-      setDocumentNonBlocking(userDocRef, userProfile, { merge: true });
+      if (!docSnap.exists()) {
+        const displayName = user.displayName || '';
+        const [firstName, ...lastNameParts] = displayName.split(' ');
+        const lastName = lastNameParts.join(' ');
+        
+        const isSuperAdmin = user.email === SUPER_ADMIN_EMAIL;
 
+        const userProfile: UserProfile = {
+          id: user.uid,
+          firstName: firstName,
+          lastName: lastName,
+          email: user.email,
+          isModerator: isSuperAdmin,
+        };
+        await setDocumentNonBlocking(userDocRef, userProfile, { merge: true });
+      }
+      
       toast({
         title: 'Signed In',
-        description: `Welcome, ${displayName}!`,
+        description: `Welcome, ${user.displayName || 'User'}!`,
       });
-      router.push('/dashboard');
+      await handleSuccessfulLogin(user);
 
     } catch (error: any) {
       toast({
@@ -387,3 +428,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
