@@ -1,116 +1,121 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a user-ownership model for user profiles and mood entries.
- *   It also allows public read access to group chat messages while restricting creation to authenticated users.
+ * @fileoverview Firestore Security Rules for the Mood Tracker application.
  *
- * @data_structure
- *   - /userProfiles/{userId}: Stores public user profile information, accessible only to the user.
- *   - /userProfiles/{userId}/moodEntries/{entryId}: Stores mood entries for a specific user, accessible only to the user.
- *   - /groupChatMessages/{messageId}: Stores chat messages, publicly readable, but creation is restricted to authenticated users.
+ * Core Philosophy:
+ * This ruleset enforces a user-centric security model where users own their profile data and mood entries.
+ * A global group chat is available for all users.
  *
- * @key_security_decisions
- *   - Users can only read and write their own profile data and mood entries.
- *   - Group chat messages are publicly readable, but only authenticated users can create them.
- *   - Listing user profiles is disallowed.
- *   - No validation is performed on data types or required fields other than those critical for authorization.
+ * Data Structure:
+ * - /userProfiles/{userId}: Stores public user profile information. Each user document is named after the user's UID.
+ * - /userProfiles/{userId}/moodEntries/{entryId}: Stores individual mood entries for each user.
+ * - /groupChatMessages/{messageId}: Stores messages for a global, anonymous chat.
  *
- * @denormalization_for_authorization
- *   - The `userId` is duplicated in the path and within the `userProfile` document itself to ensure path consistency and ownership.
+ * Key Security Decisions:
+ * - User profiles are readable only by the owning user. Listing user profiles is disallowed.
+ * - Mood entries are readable and writable only by the owning user.
+ * - The group chat is publicly readable, but only authenticated users can send messages.
+ * - Data shape validation is relaxed in prototyping mode.
  *
- * @structural_segregation
- *   - User profiles and mood entries are stored in a private user subcollection to ensure data privacy.
+ * Denormalization for Authorization:
+ * - User ownership is enforced by matching the `userId` parameter in the path to `request.auth.uid`.
+ *   This avoids the need to read user documents to determine ownership.
+ *
+ * Structural Segregation:
+ * - User profile information and mood entries are stored under the `/userProfiles/{userId}` path,
+ *   providing clear ownership and preventing accidental public exposure of private data.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Allows access to user profile documents.
      * @path /userProfiles/{userId}
-     * @allow (create) User with ID 'user123' can create their own profile.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "firstName": "John", "lastName": "Doe", "email": "john@example.com", "id": "user123" } } }
-     * @allow (get, update, delete) User with ID 'user123' can read, update, and delete their own profile.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) User with ID 'user456' cannot create a profile for 'user123'.
-     *   Request: { "auth": { "uid": "user456" }, "resource": { "data": { "firstName": "John", "lastName": "Doe", "email": "john@example.com", "id": "user123" } } }
-     * @deny (get, update, delete) User with ID 'user456' cannot read, update, and delete the profile of 'user123'.
-     *   Request: { "auth": { "uid": "user456" } }
-     * @principle Enforces document ownership for user profile management.
+     * @allow (get) User with UID 'user123' can read their own profile.
+     *     Request: auth.uid = 'user123'
+     * @deny (get) User with UID 'user456' cannot read profile 'user123'.
+     *     Request: auth.uid = 'user456'
+     * @allow (create) User 'user123' can create their profile.
+     *     Request: auth.uid = 'user123', request.resource.data.id = 'user123'
+     * @deny (update) User 'user456' cannot update profile 'user123'.
+     *     Request: auth.uid = 'user456'
+     * @deny (delete) Only the owner can delete a profile.
+     *     Request: auth.uid = 'user456'
+     * @principle Enforces document ownership for reads and writes.
      */
     match /userProfiles/{userId} {
-      // Allow anyone to read a user profile
-      allow get: if true;
-
-      // Prevent listing of all user profiles
+      // Read rules
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if false;
 
-      // Allow a user to create their own profile if the userId matches
-      allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
-
-      // Allow the user to update and delete their own profile
-      allow update, delete: if isExistingOwner(userId);
+      // Write rules
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isSignedIn() && isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to mood entries for a specific user.
+     * @description Allows access to mood entries for a specific user.
      * @path /userProfiles/{userId}/moodEntries/{entryId}
-     * @allow (create) User with ID 'user123' can create a mood entry under their profile.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "mood": "Good", "value": 4, "createdAt": "2024-01-01T00:00:00Z" } } }
-     * @allow (get, update, delete) User with ID 'user123' can read, update, and delete their own mood entries.
-     *   Request: { "auth": { "uid": "user123" } }
-     * @deny (create) User with ID 'user456' cannot create a mood entry under the profile of 'user123'.
-     *   Request: { "auth": { "uid": "user456" }, "resource": { "data": { "mood": "Good", "value": 4, "createdAt": "2024-01-01T00:00:00Z" } } }
-     * @deny (get, update, delete) User with ID 'user456' cannot read, update, and delete the mood entries of 'user123'.
-     *   Request: { "auth": { "uid": "user456" } }
-     * @principle Restricts access to mood entries to the owning user.
+     * @allow (get) User with UID 'user123' can read their own mood entries.
+     *     Request: auth.uid = 'user123'
+     * @deny (get) User with UID 'user456' cannot read mood entries of 'user123'.
+     *     Request: auth.uid = 'user456'
+     * @allow (create) User 'user123' can create mood entries under their profile.
+     *     Request: auth.uid = 'user123'
+     * @deny (update) User 'user456' cannot update mood entries of 'user123'.
+     *     Request: auth.uid = 'user456'
+     * @deny (delete) Only the owner can delete a mood entry.
+     *     Request: auth.uid = 'user456'
+     * @principle Restricts access to a user's own data tree.
      */
     match /userProfiles/{userId}/moodEntries/{entryId} {
-      // Allow the owner to read and list their own mood entries
-      allow get, list: if isOwner(userId);
+      // Read rules
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
 
-      // Allow the owner to create mood entries
+      // Write rules
       allow create: if isSignedIn() && isOwner(userId);
-
-      // Allow the owner to update and delete their own mood entries
-      allow update, delete: if isExistingOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId) && resource != null;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to group chat messages.
+     * @description Allows access to messages in the global group chat.
      * @path /groupChatMessages/{messageId}
-     * @allow (get, list) Any user can read group chat messages.
-     *   Request: { "auth": { "uid": "anyUser" } }
-     * @allow (create) Any authenticated user can create a group chat message.
-     *   Request: { "auth": { "uid": "user123" }, "resource": { "data": { "userId": "user123", "userName": "Test User", "message": "Hello!", "createdAt": "2024-01-01T00:00:00Z" } } }
-     * @deny (create) An unauthenticated user cannot create a group chat message.
-     *   Request: { "auth": null, "resource": { "data": { "userId": "user123", "userName": "Test User", "message": "Hello!", "createdAt": "2024-01-01T00:00:00Z" } } }
-     * @deny (update, delete) No one can update or delete a chat message (data immutability).
-     *   Request: { "auth": { "uid": "user123" } }
-     * @principle Allows public read access to group chat messages, but restricts creation to authenticated users.
+     * @allow (get) Any user can read messages.
+     *     Request: No auth needed
+     * @allow (list) Any user can list messages.
+     *     Request: No auth needed
+     * @allow (create) Authenticated user can create messages.
+     *     Request: auth.uid = 'user123'
+     * @deny (update) No one can update a message.
+     *     Request: auth.uid = 'user123'
+     * @deny (delete) No one can delete a message.
+     *     Request: auth.uid = 'user123'
+     * @principle Allows public read access while restricting write access to authenticated users.
      */
     match /groupChatMessages/{messageId} {
-      // Allow anyone to read and list chat messages
-      allow get, list: if true;
+      // Read rules (Public Read with Authenticated Writes)
+      allow get: if true;
+      allow list: if true;
 
-      // Allow any authenticated user to create a chat message
+      // Write rules
       allow create: if isSignedIn();
-
-      // No one can update or delete a chat message
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 
-  // Helper function to determine if the user is signed in
+  // Helper functions
   function isSignedIn() {
     return request.auth != null;
   }
 
-  // Helper function to determine if the user is the owner
   function isOwner(userId) {
     return request.auth.uid == userId;
   }
 
-    // Helper function to determine if the user is the owner and the resource exists
   function isExistingOwner(userId) {
     return isOwner(userId) && resource != null;
   }
