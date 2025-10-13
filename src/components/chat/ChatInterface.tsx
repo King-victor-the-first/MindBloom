@@ -14,7 +14,7 @@ import { Send, Loader2, ShieldAlert, CheckCircle, MoreHorizontal, Trash2, Reply,
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, query, orderBy, serverTimestamp, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { uploadFile } from "@/firebase/storage";
+import { uploadFile, getStorageInstance } from "@/firebase/storage";
 import { Badge } from "@/components/ui/badge";
 import type { UserProfile, ChatMessage } from "@/lib/types";
 import {
@@ -33,6 +33,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import type { FirebaseStorage } from "firebase/storage";
 
 export default function ChatInterface() {
   const [input, setInput] = useState("");
@@ -45,6 +46,14 @@ export default function ChatInterface() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
   const firestore = useFirestore();
+  const [storage, setStorage] = useState<FirebaseStorage | null>(null);
+
+
+  useEffect(() => {
+    // Correctly get storage instance on the client
+    setStorage(getStorageInstance());
+  }, []);
+
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -97,6 +106,7 @@ export default function ChatInterface() {
         });
         setInput("");
         setMediaFile(null);
+        setIsSending(false);
         return;
       }
       
@@ -104,12 +114,16 @@ export default function ChatInterface() {
       let mediaType: string | undefined;
 
       if (mediaFile) {
-        const { downloadURL } = await uploadFile(mediaFile, `chat/${user.uid}/${Date.now()}_${mediaFile.name}`);
+        if (!storage) {
+            throw new Error("Storage service is not available.");
+        }
+        const { downloadURL } = await uploadFile(storage, mediaFile, `chat/${user.uid}/${Date.now()}_${mediaFile.name}`);
         mediaUrl = downloadURL;
         mediaType = mediaFile.type;
       }
 
       const displayName = userProfile?.firstName ? `${userProfile.firstName} ${userProfile.lastName?.[0] || ''}.` : user.displayName || 'Anonymous';
+      const isModerator = userProfile?.isModerator === true;
 
       const newMessage: Omit<ChatMessage, 'id'> = {
         userId: user.uid,
@@ -117,7 +131,7 @@ export default function ChatInterface() {
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
         message: input,
         createdAt: serverTimestamp(),
-        isModerator: userProfile?.isModerator === true,
+        isModerator: isModerator,
         isDeleted: false,
         mediaUrl,
         mediaType,
