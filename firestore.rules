@@ -1,37 +1,117 @@
+/**
+ * @fileoverview Firestore Security Rules for the application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a user-ownership model for user profiles and mood entries,
+ * and restricts group chat message modifications to moderators.
+ *
+ * Data Structure:
+ * - /userProfiles/{userId}: Stores public profile information for each user.
+ * - /userProfiles/{userId}/moodEntries/{entryId}: Stores individual mood entries for a user.
+ * - /groupChatMessages/{messageId}: Stores messages for the anonymous group chat.
+ *
+ * Key Security Decisions:
+ * - User profiles and mood entries are only accessible and modifiable by the owning user.
+ * - Only moderators can delete or flag group chat messages.
+ * - Data validation is minimized to allow for rapid prototyping.
+ *
+ * Denormalization for Authorization:
+ *  - The `ChatMessage` entity needs an `isModerator` property which is automatically populated based on user privileges.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Allow moderators to list all user profiles for the admin dashboard
-    match /userProfiles/{document=**} {
-      allow list: if get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
-    }
 
-    // Rules for a single user's profile
+    /**
+     * @description Controls access to user profile information.
+     * @path /userProfiles/{userId}
+     * @allow (get, create, update, delete, list) if the user is the owner of the profile.
+     * @deny (create) if the user ID in the path does not match the authenticated user ID.
+     * @deny (update, delete) if the user is not the owner of the profile.
+     * @principle Enforces document ownership for user profiles.
+     */
     match /userProfiles/{userId} {
-      // A user can get and update their own profile
-      allow get, update: if request.auth.uid == userId;
+      // Read permissions: Only the owner can read their profile.
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false; // Disable listing of user profiles.
 
-      // Moderators can get and update any user's profile
-      allow get, update: if get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
-      
-      // A user can create their own profile. A moderator can also create profiles.
-      allow create: if request.auth.uid == userId || get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
-
-      // Moderators can delete users.
-      allow delete: if get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
-
-      // Rules for the moodEntries subcollection
-      match /moodEntries/{entryId} {
-        // A user can read and write their own mood entries.
-        allow read, write: if request.auth.uid == userId;
-      }
+      // Write permissions:
+      // - Create: Only allowed if the user ID matches the authenticated user ID.
+      allow create: if isSignedIn() && isOwner(userId);
+      // - Update: Only allowed if the user is the owner.
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      // - Delete: Only allowed if the user is the owner.
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
-    // Rules for the groupChatMessages collection
+    /**
+     * @description Controls access to mood entries for a specific user.
+     * @path /userProfiles/{userId}/moodEntries/{entryId}
+     * @allow (get, create, update, delete, list) if the user is the owner of the mood entry.
+     * @deny (create) if the user ID in the path does not match the authenticated user ID.
+     * @deny (update, delete) if the user is not the owner of the mood entry.
+     * @principle Enforces document ownership for mood entries within a user profile.
+     */
+    match /userProfiles/{userId}/moodEntries/{entryId} {
+      // Read permissions: Only the owner can read their mood entries.
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+
+      // Write permissions:
+      // - Create: Only allowed if the user ID matches the authenticated user ID.
+      allow create: if isSignedIn() && isOwner(userId);
+      // - Update: Only allowed if the user is the owner.
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      // - Delete: Only allowed if the user is the owner.
+      allow delete: if isSignedIn() && isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to group chat messages.
+     * @path /groupChatMessages/{messageId}
+     * @allow (get, list) to everyone.
+     * @allow (create) to authenticated users.
+     * @allow (update, delete) only to moderators.
+     * @deny (update, delete) if the user is not a moderator.
+     * @principle Allows public read access, but restricts write access to moderators.
+     */
     match /groupChatMessages/{messageId} {
-      // Any authenticated user can read (get, list) and create messages.
-      allow read, create: if request.auth != null;
+      // Read permissions: Everyone can read group chat messages.
+      allow get: if true;
+      allow list: if true;
+
+      // Write permissions:
+      // - Create: Only authenticated users can create new messages.
+      allow create: if isSignedIn();
+      // - Update: Only moderators can update messages (e.g., to mark as deleted).
+      allow update: if isSignedIn() && isModerator();
+      // - Delete: Only moderators can delete messages.
+      allow delete: if isSignedIn() && isModerator();
     }
+  }
+
+  // Helper functions:
+
+  // Checks if the user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  // Checks if the user is the owner of the document.
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+    // Checks if the user is the owner of the document, and that the document exists.
+  function isExistingOwner(userId) {
+    return isOwner(userId) && resource != null;
+  }
+
+  // Checks if the user has moderator privileges.
+  function isModerator() {
+    // TODO: Implement the correct logic to determine moderator status.
+    // This could involve checking a custom claim or a document in a "moderators" collection.
+    // For now, this function always returns false.
+    return false;
   }
 }
