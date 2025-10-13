@@ -3,21 +3,32 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Function to check if a user is a moderator
+    function isModerator(userId) {
+      return get(/databases/$(database)/documents/userProfiles/$(userId)).data.isModerator == true;
+    }
 
-    // User Profiles: Users can only read and write to their own profile.
+    // User profiles can be read by anyone, but only written by the user themselves or a moderator.
+    // Moderators can list all users.
     match /userProfiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow get: if request.auth != null;
+      allow list: if request.auth != null && isModerator(request.auth.uid);
+      allow write: if request.auth != null && (request.auth.uid == userId || isModerator(request.auth.uid));
+      allow delete: if request.auth != null && isModerator(request.auth.uid);
 
-      // Mood Entries: Users can only manage their own mood entries.
+      // Users can only read and write their own mood entries
       match /moodEntries/{entryId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // Group Chat: Any authenticated user can read and create messages.
-    // They cannot update or delete messages.
+    // Group chat messages can be read by any authenticated user.
+    // Users can create their own messages.
+    // Moderators can delete any message.
     match /groupChatMessages/{messageId} {
       allow read, create: if request.auth != null;
+      allow delete: if request.auth != null && isModerator(request.auth.uid);
     }
   }
 }

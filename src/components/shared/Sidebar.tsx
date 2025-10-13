@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Smile, ClipboardList, MessageCircle, Bot, LogOut, Settings } from 'lucide-react';
+import { Home, Smile, ClipboardList, Bot, LogOut, Settings, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
@@ -30,6 +30,8 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
+const adminNavItem = { href: '/admin', label: 'Admin', icon: Shield };
+
 export default function Sidebar() {
   const pathname = usePathname();
   const auth = useAuth();
@@ -43,6 +45,7 @@ export default function Sidebar() {
   }, [firestore, user]);
   
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const isModerator = userProfile?.isModerator === true;
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -61,6 +64,8 @@ export default function Sidebar() {
     return "U";
   }
 
+  const allNavItems = isModerator ? [...navItems, adminNavItem] : navItems;
+
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen p-4 bg-card border-r fixed top-0 left-0">
         <div className="flex items-center justify-between">
@@ -68,22 +73,23 @@ export default function Sidebar() {
         </div>
 
         <nav className="flex flex-col mt-8 space-y-1 flex-1">
-            {navItems.map((item) => {
-                const isActive = pathname === item.href || (item.subItems && item.subItems.some(sub => pathname.startsWith(sub.href)));
+            {allNavItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
                 const Icon = item.icon;
 
                 if (item.subItems) {
+                    const isSubActive = item.subItems.some(sub => pathname.startsWith(sub.href));
                     return (
-                        <Collapsible key={item.href} defaultOpen={isActive}>
+                        <Collapsible key={item.href} defaultOpen={isSubActive}>
                             <CollapsibleTrigger className='w-full'>
                                 <div className={cn(
                                     'flex items-center justify-between gap-3 px-4 py-2 rounded-lg transition-colors duration-200 w-full',
-                                    isActive
+                                    isSubActive
                                     ? 'bg-primary text-primary-foreground'
                                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                 )}>
                                     <div className='flex items-center gap-3'>
-                                        <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                                        <Icon className="w-5 h-5" strokeWidth={isSubActive ? 2.5 : 2} />
                                         <span className="font-medium">{item.label}</span>
                                     </div>
                                     <ChevronRight className='w-4 h-4 transition-transform [&[data-state=open]]:rotate-90' />
@@ -143,7 +149,7 @@ export default function Sidebar() {
                   </Avatar>
                   <div>
                       <p className="font-semibold text-sm">{getFirstName()}</p>
-                      <p className="text-xs text-muted-foreground">Student</p>
+                      <p className="text-xs text-muted-foreground">{isModerator ? 'Moderator' : 'Student'}</p>
                   </div>
                 </div>
                 <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
