@@ -80,9 +80,32 @@
         "isDeleted": {
             "type": "boolean",
             "description": "Flag for soft-deleted messages."
+        },
+        "mediaUrl": {
+          "type": "string",
+          "description": "The URL of any shared media."
+        },
+        "mediaType": {
+          "type": "string",
+          "description": "The MIME type of the shared media (e.g., 'image/jpeg')."
+        },
+        "replyTo": {
+          "type": "object",
+          "description": "Information about the message being replied to.",
+          "properties": {
+            "messageId": {
+              "type": "string"
+            },
+            "messageOwner": {
+              "type": "string"
+            },
+            "messageSnippet": {
+              "type": "string"
+            }
+          }
         }
       },
-      "required": ["userId", "userName", "message", "createdAt"]
+      "required": ["userId", "userName", "createdAt"]
     }
   },
   "auth": {

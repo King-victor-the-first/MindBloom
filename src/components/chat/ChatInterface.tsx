@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import { moderateGroupChatMessage } from "@/ai/flows/moderate-group-chat";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -8,12 +9,13 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Send, Loader2, ShieldAlert, CheckCircle, MoreHorizontal, Trash2 } from "lucide-react";
+import { Send, Loader2, ShieldAlert, CheckCircle, MoreHorizontal, Trash2, Reply, X, Paperclip } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, query, orderBy, serverTimestamp, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { uploadFile } from "@/firebase/storage";
 import { Badge } from "@/components/ui/badge";
-import type { UserProfile } from "@/lib/types";
+import type { UserProfile, ChatMessage } from "@/lib/types";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -31,42 +33,29 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-
-// The shape of a message document in Firestore
-type FirestoreChatMessage = {
-    id: string;
-    userId: string;
-    userName: string;
-    avatarUrl?: string;
-    message: string;
-    createdAt: any; // Firestore Timestamp
-    isModerator?: boolean;
-    isDeleted?: boolean;
-};
-
 export default function ChatInterface() {
   const [input, setInput] = useState("");
-  const [moderationLoading, setModerationLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Get user profile to check for moderator status
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
     return doc(firestore, "userProfiles", user.uid);
   }, [firestore, user]);
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
-  // Set up the query for the chat messages collection
   const messagesQuery = useMemoFirebase(() => 
     query(collection(firestore, "groupChatMessages"), orderBy("createdAt", "asc"))
   , [firestore]);
 
-  // Subscribe to chat messages
-  const { data: messages, isLoading: messagesLoading } = useCollection<FirestoreChatMessage>(messagesQuery);
+  const { data: messages, isLoading: messagesLoading } = useCollection<ChatMessage>(messagesQuery);
 
   const scrollToBottom = () => {
      if (scrollAreaRef.current) {
@@ -83,10 +72,16 @@ export default function ChatInterface() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || !user) return;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setMediaFile(e.target.files[0]);
+    }
+  };
 
-    setModerationLoading(true);
+  const handleSend = async () => {
+    if ((!input.trim() && !mediaFile) || !user) return;
+
+    setIsSending(true);
     try {
       const moderationResult = await moderateGroupChatMessage({
         message: input,
@@ -99,16 +94,25 @@ export default function ChatInterface() {
           description: `Your message was blocked: ${moderationResult.reason}`,
           variant: "destructive",
         });
-        setInput(""); // Clear input even if blocked
+        setInput("");
         return;
       }
       
+      let mediaUrl: string | undefined;
+      let mediaType: string | undefined;
+
+      if (mediaFile) {
+        const { downloadURL } = await uploadFile(mediaFile, `chat/${user.uid}/${Date.now()}_${mediaFile.name}`);
+        mediaUrl = downloadURL;
+        mediaType = mediaFile.type;
+      }
+
       const displayName = user.displayName || 'Anonymous';
       const [firstName, ...lastNameParts] = displayName.split(' ');
       const lastNameInitial = lastNameParts.length > 0 ? `${lastNameParts[0][0]}.` : '';
       const userName = `${firstName} ${lastNameInitial}`.trim();
       
-      const newMessage = {
+      const newMessage: Partial<ChatMessage> = {
         userId: user.uid,
         userName: userName,
         avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
@@ -116,12 +120,24 @@ export default function ChatInterface() {
         createdAt: serverTimestamp(),
         isModerator: userProfile?.isModerator === true,
         isDeleted: false,
+        mediaUrl,
+        mediaType,
       };
+
+      if (replyTo) {
+        newMessage.replyTo = {
+            messageId: replyTo.id,
+            messageOwner: replyTo.userName,
+            messageSnippet: replyTo.message || (replyTo.mediaUrl ? "Image" : "")
+        }
+      }
 
       const messagesCollectionRef = collection(firestore, "groupChatMessages");
       addDocumentNonBlocking(messagesCollectionRef, newMessage);
 
       setInput("");
+      setReplyTo(null);
+      setMediaFile(null);
       scrollToBottom();
 
     } catch (error) {
@@ -132,7 +148,7 @@ export default function ChatInterface() {
         variant: "destructive",
       });
     } finally {
-      setModerationLoading(false);
+      setIsSending(false);
     }
   };
 
@@ -142,6 +158,8 @@ export default function ChatInterface() {
     updateDocumentNonBlocking(messageDocRef, {
         message: "This message was deleted.",
         isDeleted: true,
+        mediaUrl: null,
+        mediaType: null,
     });
     setDeleteConfirmation(null);
     toast({
@@ -150,7 +168,7 @@ export default function ChatInterface() {
     });
   };
 
-  const loading = moderationLoading || messagesLoading;
+  const loading = isSending || messagesLoading;
 
   return (
     <div className="flex-1 flex flex-col bg-muted/30">
@@ -181,7 +199,7 @@ export default function ChatInterface() {
                     isYou
                         ? "bg-primary text-primary-foreground rounded-br-none"
                         : "bg-card text-card-foreground rounded-bl-none",
-                    msg.isDeleted && "italic text-muted-foreground bg-transparent"
+                    msg.isDeleted && "italic text-muted-foreground bg-transparent p-1"
                     )}
                 >
                     {!isYou && !msg.isDeleted && (
@@ -195,21 +213,38 @@ export default function ChatInterface() {
                             )}
                         </div>
                     )}
+
+                    {msg.replyTo && !msg.isDeleted && (
+                         <div className="p-2 mb-2 rounded-md bg-black/10 dark:bg-white/10 text-xs">
+                            <p className="font-semibold">{msg.replyTo.messageOwner}</p>
+                            <p className="truncate opacity-80">{msg.replyTo.messageSnippet}</p>
+                        </div>
+                    )}
                     
+                    {msg.mediaUrl && !msg.isDeleted && (
+                        <Image src={msg.mediaUrl} alt="Shared media" width={200} height={200} className="rounded-md mb-2 object-cover" />
+                    )}
+
                     <p className="text-sm">{msg.message}</p>
                 </div>
-                {isYou && !msg.isDeleted && (
-                    <DropdownMenu>
+                {!msg.isDeleted && (
+                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <MoreHorizontal className="w-4 h-4" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => setDeleteConfirmation(msg.id)} className="text-destructive">
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
+                            <DropdownMenuItem onClick={() => setReplyTo(msg)}>
+                                <Reply className="w-4 h-4 mr-2" />
+                                Reply
                             </DropdownMenuItem>
+                             {isYou && (
+                                <DropdownMenuItem onClick={() => setDeleteConfirmation(msg.id)} className="text-destructive">
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                </DropdownMenuItem>
+                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
@@ -235,7 +270,39 @@ export default function ChatInterface() {
         </AlertDialogContent>
       </AlertDialog>
       <div className="p-4 bg-card border-t">
+        {replyTo && (
+            <div className="flex items-center justify-between p-2 mb-2 bg-muted rounded-md text-sm">
+                <div>
+                    <p className="font-semibold">Replying to {replyTo.userName}</p>
+                    <p className="text-xs truncate text-muted-foreground">{replyTo.message || "Image"}</p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setReplyTo(null)}>
+                    <X className="w-4 h-4" />
+                </Button>
+            </div>
+        )}
+        {mediaFile && (
+            <div className="flex items-center justify-between p-2 mb-2 bg-muted rounded-md text-sm">
+                <div>
+                    <p className="font-semibold">Attachment</p>
+                    <p className="text-xs truncate text-muted-foreground">{mediaFile.name}</p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setMediaFile(null)}>
+                    <X className="w-4 h-4" />
+                </Button>
+            </div>
+        )}
         <div className="flex items-center gap-2">
+           <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={loading}>
+            <Paperclip className="w-5 h-5" />
+          </Button>
+          <Input 
+            type="file" 
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept="image/*"
+          />
           <Input
             placeholder="Type a supportive message..."
             value={input}
@@ -243,7 +310,7 @@ export default function ChatInterface() {
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
             disabled={loading}
           />
-          <Button onClick={handleSend} disabled={loading} size="icon">
+          <Button onClick={handleSend} disabled={loading || (!input.trim() && !mediaFile)} size="icon">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>

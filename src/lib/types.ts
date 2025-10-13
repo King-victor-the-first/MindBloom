@@ -21,6 +21,14 @@ export interface ChatMessage {
   message: string;
   createdAt: any;
   isModerator?: boolean;
+  isDeleted?: boolean;
+  mediaUrl?: string;
+  mediaType?: string;
+  replyTo?: {
+    messageId: string;
+    messageOwner: string;
+    messageSnippet: string;
+  };
 }
 
 export interface MoodBooster {
