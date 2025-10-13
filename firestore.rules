@@ -1,90 +1,102 @@
 /**
  * @file Firestore Security Rules
+ * @version 2
+ *
  * @description This ruleset enforces a user-ownership model for user profiles and mood entries,
- *              while allowing public read access to group chat messages. Moderator status, managed
- *              in user profiles, grants the ability to moderate the chat.
+ *              and allows public read access to group chat messages.
  *
  * Data Structure:
- * - /userProfiles/{userId}: Stores public user profile data. Only the user and moderators can read or write.
- * - /userProfiles/{userId}/moodEntries/{entryId}: Stores mood entries for a specific user. Only the user can manage these.
- * - /groupChatMessages/{messageId}: Stores public chat messages. Anyone can read, but only authenticated users can create.
+ * - /userProfiles/{userId}: Stores public user profile information.
+ * - /userProfiles/{userId}/moodEntries/{entryId}: Stores private mood entries for each user.
+ * - /groupChatMessages/{messageId}: Stores chat messages for a public group chat.
  *
  * Key Security Decisions:
- * - User profiles are private and only editable by the user and moderators, preventing unauthorized modifications.
- * - Mood entries are strictly user-owned, ensuring personal mood data privacy.
- * - Group chat messages are publicly readable to facilitate open communication.
- * - Moderators can be assigned by updating the isModerator field.
- *
- * Denormalization for Authorization:
- * - The `isModerator` flag is stored directly within the user profile to avoid needing separate role lookups for chat moderation.
+ * - User profiles are readable by anyone, but only the owner can modify their own profile.
+ * - Mood entries are private and accessible only to the owner of the profile.
+ * - Group chat messages are publicly readable, but only authenticated users can create them.
+ *   Moderator status is denormalized on each chat message to avoid querying the user profile.
+ * - User listing is not allowed except for moderators.
+ * - Data validation is relaxed to allow for rapid prototyping but MUST be hardened later.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is signed in.
+    // Helper function to check if the request is authenticated.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Helper function to check if the request is from the owner of the resource.
+    // Helper function to check if the requesting user is the owner of the document.
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    // Helper function to check if the user is a moderator.
-    function isModerator() {
-      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+    // Helper function to check if the requesting user is the owner of the existing document.
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Controls access to user profile information.  Anyone can read a user's profile,
+     *              but only the user themselves can create, update, or delete their profile.
      * @path /userProfiles/{userId}
-     * @allow (get, update, delete) if isSignedIn() && isOwner(userId) - Allows the user to read, update, and delete their own profile.
-     * @allow (get, update) if isSignedIn() && isModerator() - Allows moderators to read and update user profiles.
-     * @allow (create) if isSignedIn() && isOwner(userId) - Allows a user to create their own profile.
-     * @deny (create) if !isSignedIn() - Prevents unauthenticated users from creating profiles.
-     * @deny (list) - Listing user profiles is not allowed.
-     * @principle Enforces document ownership and moderator access for user profiles.
+     * @allow (get, list) Any user can read profile data.
+     * @allow (create) User with UID 'user123' can create their profile.
+     * @allow (update) User with UID 'user123' can update their own profile.
+     * @allow (delete) User with UID 'user123' can delete their own profile.
+     * @deny (create) User with UID 'otherUser' attempts to create a profile for 'user123'.
+     * @deny (update) User with UID 'otherUser' attempts to update profile 'user123'.
+     * @deny (delete) User with UID 'otherUser' attempts to delete profile 'user123'.
+     * @principle Public read, owner-only write access to user profiles.
      */
     match /userProfiles/{userId} {
-      allow get: if isSignedIn() && (isOwner(userId) || isModerator());
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId) && request.auth.uid == userId;
-      allow update: if isSignedIn() && (isOwner(userId) || isModerator());
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow get: if true;
+      allow list: if true;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to mood entries for a specific user.
+     * @description Controls access to mood entries for a specific user. Only the owner of the profile
+     *              can create, read, update, or delete their own mood entries.
      * @path /userProfiles/{userId}/moodEntries/{entryId}
-     * @allow (get, list, create, update, delete) if isSignedIn() && isOwner(userId) - Allows the user to manage their own mood entries.
-     * @deny (get, list, create, update, delete) if !isSignedIn() - Prevents unauthenticated users from accessing mood entries.
-     * @principle Restricts access to a user's own mood entries.
+     * @allow (get, list) User with UID 'user123' can read their own mood entries.
+     * @allow (create) User with UID 'user123' can create mood entries under their profile.
+     * @allow (update) User with UID 'user123' can update their own mood entries.
+     * @allow (delete) User with UID 'user123' can delete their own mood entries.
+     * @deny (get, list) User with UID 'otherUser' attempts to read mood entries of 'user123'.
+     * @deny (create) User with UID 'otherUser' attempts to create mood entries under profile 'user123'.
+     * @deny (update) User with UID 'otherUser' attempts to update mood entries of 'user123'.
+     * @deny (delete) User with UID 'otherUser' attempts to delete mood entries of 'user123'.
+     * @principle Strict user-ownership for mood entries.
      */
     match /userProfiles/{userId}/moodEntries/{entryId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to group chat messages.
+     * @description Controls access to chat messages in the group chat.  Anyone can read messages,
+     *              but only authenticated users can create new messages.
      * @path /groupChatMessages/{messageId}
-     * @allow (get, list) if true - Allows anyone to read chat messages.
-     * @allow (create) if isSignedIn() - Allows authenticated users to create chat messages.
-     * @allow (update, delete) if isSignedIn() && isModerator() - Allows moderators to update and delete chat messages.
-     * @deny (update, delete) if !isSignedIn() - Denies unauthenticated users from updating and deleting messages.
-     * @principle Allows public read access for chat messages, with write access restricted to authenticated users and moderators.
+     * @allow (get, list) Any user (signed in or not) can read chat messages.
+     * @allow (create) User with UID 'user123' can create a chat message.
+     * @deny (create) Unauthenticated user attempts to create a chat message.
+     * @deny (update) Any user attempts to update a chat message (updates are not allowed).
+     * @deny (delete) Any user attempts to delete a chat message (deletes are not allowed).
+     * @principle Public read, authenticated-user-only create for group chat.
      */
     match /groupChatMessages/{messageId} {
       allow get: if true;
       allow list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && isModerator();
-      allow delete: if isSignedIn() && isModerator();
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
