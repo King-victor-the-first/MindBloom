@@ -1,49 +1,40 @@
 /**
- * @fileoverview Firestore Security Rules for Prototyping.
+ * @fileoverview Firestore Security Rules for the Mood Tracker application.
  *
  * Core Philosophy:
- * This ruleset prioritizes strict user ownership and authenticated access. It avoids complex data validation
- * to enable rapid prototyping. All data is secured by default, and specific exceptions are made for
- * public read access where appropriate.
+ * This ruleset prioritizes user data privacy and restricts access based on ownership and role-based authorization.
  *
  * Data Structure:
- * - `/userProfiles/{userId}`: Stores public user profile information, accessible only to the owning user.
- * - `/userProfiles/{userId}/moodEntries/{entryId}`: Stores mood entries, accessible only to the owning user.
- * - `/groupChatMessages/{messageId}`: Stores chat messages, publicly readable but writable only by authenticated users.
+ * - User profiles are stored under `/userProfiles/{userId}`.
+ * - Mood entries are stored as subcollections under each user's profile: `/userProfiles/{userId}/moodEntries/{entryId}`.
+ * - Group chat messages are stored in a top-level collection `/groupChatMessages/{messageId}` and are publicly readable.
  *
  * Key Security Decisions:
- * - User data is strictly controlled by the owning user.
- * - Public listing of user profiles and mood entries is disallowed.
- * - Group chat messages are publicly readable to facilitate anonymous communication.
- *
- * Denormalization for Authorization:
- *  -The `ChatMessage` objects store the `userId` of the message author. This allows `isOwner(userId)` checks on the `/groupChatMessages/{messageId}` collection.
- *
- * Structural Segregation:
- *  - Mood entries are stored in a subcollection of `userProfiles` to enforce user-specific data isolation.
+ * - User listing is disabled to protect user privacy.
+ * - Mood entries are strictly owned by the user.
+ * - Group chat messages are publicly readable, but creation is restricted to authenticated users.
+ * - Moderators have no special privileges in the group chat.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the current user is signed in.
+     * @description Checks if the request is made by a signed-in user.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the current user is the owner of the resource.
-     * @param {string} userId - The user ID to compare against the request's auth UID.
+     * @description Checks if the request is made by the owner of the resource.
      */
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the current user is the owner of the existing resource.
-     * @param {string} userId - The user ID to compare against the resource's userId.
+     * @description Checks if the request is made by the owner of the existing resource.
      */
     function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
@@ -52,20 +43,16 @@ service cloud.firestore {
     /**
      * @description Rules for user profiles.
      * @path /userProfiles/{userId}
-     * @allow (create) - Allow user to create their own profile.
-     * @allow (get) - Allow user to get their own profile.
-     * @allow (update) - Allow user to update their own profile.
-     * @allow (delete) - Allow user to delete their own profile.
-     * @deny (create) - Deny creation if the user ID in the path does not match the authenticated user's ID.
-     * @deny (get) - Deny retrieval if the user ID in the path does not match the authenticated user's ID.
-     * @deny (update) - Deny update if the user ID in the path does not match the authenticated user's ID.
-     * @deny (delete) - Deny delete if the user ID in the path does not match the authenticated user's ID.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with ID 'user123' can create their own profile.
+     * @allow (get) Any user can read another user's profile.
+     * @deny (create) User with ID 'user456' cannot create a profile for 'user123'.
+     * @deny (update) User with ID 'user456' cannot update the profile for 'user123'.
+     * @principle Enforces document ownership for writes, public read access.
      */
     match /userProfiles/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
+      allow get: if true;
+      allow list: if false; // User listing is not allowed.
+      allow create: if isOwner(userId) && request.resource.data.email is string;
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
@@ -73,15 +60,9 @@ service cloud.firestore {
     /**
      * @description Rules for mood entries.
      * @path /userProfiles/{userId}/moodEntries/{entryId}
-     * @allow (create) - Allow user to create mood entries under their own profile.
-     * @allow (get) - Allow user to get mood entries under their own profile.
-     * @allow (update) - Allow user to update mood entries under their own profile.
-     * @allow (delete) - Allow user to delete mood entries under their own profile.
-     * @deny (create) - Deny creation if the user ID in the parent path does not match the authenticated user's ID.
-     * @deny (get) - Deny retrieval if the user ID in the parent path does not match the authenticated user's ID.
-     * @deny (update) - Deny update if the user ID in the parent path does not match the authenticated user's ID.
-     * @deny (delete) - Deny delete if the user ID in the parent path does not match the authenticated user's ID.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with ID 'user123' can create a mood entry under their profile.
+     * @deny (create) User with ID 'user456' cannot create a mood entry under 'user123' profile.
+     * @principle Restricts access to a user's own data tree.
      */
     match /userProfiles/{userId}/moodEntries/{entryId} {
       allow get: if isOwner(userId);
@@ -94,13 +75,11 @@ service cloud.firestore {
     /**
      * @description Rules for group chat messages.
      * @path /groupChatMessages/{messageId}
-     * @allow (create) - Allow any authenticated user to create a chat message.
-     * @allow (get) - Allow anyone to read a chat message.
-     * @allow (list) - Allow anyone to list chat messages.
-     * @allow (update) - Deny updates to existing messages.
-     * @allow (delete) - Deny deletes to existing messages.
-     * @deny (create) - Deny creation if the user is not authenticated.
-     * @principle Allows public read access but restricts write access to authenticated users.
+     * @allow (get) Any user can read group chat messages.
+     * @allow (create) Any signed-in user can create a group chat message.
+     * @deny (update) No user can update a group chat message.
+     * @deny (delete) No user can delete a group chat message.
+     * @principle Public read access, authenticated writes.
      */
     match /groupChatMessages/{messageId} {
       allow get: if true;
