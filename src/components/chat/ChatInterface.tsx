@@ -76,7 +76,7 @@ export default function ChatInterface() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || !user || !userProfile) return;
+    if (!input.trim() || !user) return;
 
     setModerationLoading(true);
     try {
@@ -95,7 +95,10 @@ export default function ChatInterface() {
         return;
       }
       
-      const userName = userProfile.firstName ? `${userProfile.firstName} ${userProfile.lastName?.[0] || ''}.` : "Anonymous";
+      const displayName = user.displayName || 'Anonymous';
+      const [firstName, ...lastNameParts] = displayName.split(' ');
+      const lastNameInitial = lastNameParts.length > 0 ? `${lastNameParts[0][0]}.` : '';
+      const userName = `${firstName} ${lastNameInitial}`.trim();
       
       const newMessage = {
         userId: user.uid,
