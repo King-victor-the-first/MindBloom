@@ -85,30 +85,37 @@ const therapyConversationFlow = ai.defineFlow(
   },
   async (input) => {
     
-    // Combine all generation logic into a single call
-    const { text: responseText, media } = await ai.generate({
+    // Step 1: Generate the text response.
+    const textResponse = await ai.generate({
         system: therapyPrompt,
-        history: input.history as MessageData[], // Cast to the correct type
+        history: input.history as MessageData[],
         prompt: input.message,
+    });
+
+    const responseText = textResponse.text;
+    if (!responseText) {
+        throw new Error('No text response was returned from the language model.');
+    }
+
+    // Step 2: Generate the audio from the text response.
+    const audioResponse = await ai.generate({
         model: googleAI.model('gemini-2.5-flash-preview-tts'),
+        prompt: responseText,
         config: {
-          responseModalities: ['AUDIO', 'TEXT'], // Request both text and audio
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: input.voiceName || 'Algenib' },
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+                voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: input.voiceName || 'Algenib' },
+                },
             },
-          },
         },
     });
-  
+
+    const media = audioResponse.media;
     if (!media) {
       throw new Error('No media was returned from the TTS model.');
     }
     
-    if (!responseText) {
-        throw new Error('No text response was returned from the model.');
-    }
-
     const audioBuffer = Buffer.from(
       media.url.substring(media.url.indexOf(',') + 1),
       'base64'
