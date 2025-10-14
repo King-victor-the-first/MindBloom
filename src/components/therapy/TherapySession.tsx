@@ -9,15 +9,11 @@ import { Mic, MicOff, PhoneOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DisclaimerDialog from "./DisclaimerDialog";
 import { therapyConversation } from "@/ai/flows/therapy-conversation";
+import type { MessageData } from 'genkit/ai';
 
 type TranscriptItem = {
   speaker: "user" | "ai";
   text: string;
-};
-
-type HistoryItem = {
-  role: 'user' | 'model';
-  content: { text: string }[];
 };
 
 export default function TherapySession() {
@@ -26,7 +22,7 @@ export default function TherapySession() {
   const [isListening, setIsListening] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [history, setHistory] = useState<MessageData[]>([]);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
@@ -34,6 +30,7 @@ export default function TherapySession() {
 
   const aiAvatar = PlaceHolderImages.find((p) => p.id === "therapy-session-ai");
 
+  // --- Client-side Initialization ---
   useEffect(() => {
     setIsMounted(true);
     audioRef.current = new Audio();
@@ -44,36 +41,33 @@ export default function TherapySession() {
   const playAudio = useCallback((audioDataUri: string) => {
     if (audioRef.current) {
         setIsAiSpeaking(true);
-        recognitionRef.current?.stop(); // Stop listening while AI speaks
         audioRef.current.src = audioDataUri;
         audioRef.current.play();
         audioRef.current.onended = () => {
             setIsAiSpeaking(false);
-            if (!isListening) {
-              recognitionRef.current?.start(); // Start listening again
-            }
+            // Restart listening only after AI is done speaking
+            recognitionRef.current?.start();
         };
         audioRef.current.onerror = () => {
             console.error("Error playing audio.");
             setIsAiSpeaking(false);
-            if (!isListening) {
-              recognitionRef.current?.start();
-            }
+            // If audio fails, restart listening
+            recognitionRef.current?.start();
         };
     }
-  }, [isListening]);
+  }, []);
+
 
   const handleSpeech = useCallback(async (text: string) => {
     if (!text || isAiSpeaking) return;
 
-    recognitionRef.current?.stop(); // Immediately stop recognition
-
+    // Add user message to UI and history
     const userMessage: TranscriptItem = { speaker: "user", text };
     setTranscript((prev) => [...prev, userMessage]);
-
-    const newHistory: HistoryItem[] = [...history, { role: 'user', content: [{ text }] }];
+    const newHistory: MessageData[] = [...history, { role: 'user', content: [{ text }] }];
     setHistory(newHistory);
     
+    // Get AI response
     try {
       const result = await therapyConversation({ history: newHistory, message: text, voiceName: voice });
       const aiMessage: TranscriptItem = { speaker: "ai", text: result.response };
@@ -88,41 +82,21 @@ export default function TherapySession() {
       const aiMessage: TranscriptItem = { speaker: "ai", text: errorMessage };
       setTranscript((prev) => [...prev, aiMessage]);
       setHistory((prev) => [...prev, { role: 'model', content: [{text: errorMessage}] }]);
-      // Use fallback TTS if API fails
-       if (typeof window !== "undefined" && window.speechSynthesis) {
-        setIsAiSpeaking(true);
-        recognitionRef.current?.stop();
-        const utterance = new SpeechSynthesisUtterance(errorMessage);
-        utterance.onend = () => {
-            setIsAiSpeaking(false);
-            recognitionRef.current?.start();
-        };
-        utterance.onerror = () => {
-          setIsAiSpeaking(false);
-          recognitionRef.current?.start();
-        };
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setIsAiSpeaking(false);
-        recognitionRef.current?.start();
-      }
     }
   }, [history, voice, playAudio, isAiSpeaking]);
-  
-  // Effect for initial greeting, runs once after disclaimer is agreed to.
+
+
+  // --- Initial Greeting ---
   useEffect(() => {
-    if (!showDisclaimer) {
-        // A small delay to ensure the user is ready.
-        const timer = setTimeout(() => {
-            handleSpeech("Hello, I'm Bloom. I'm here to listen. How are you feeling today?");
-        }, 500);
-        return () => clearTimeout(timer);
+    if (!showDisclaimer && history.length === 0) {
+      const initialGreeting = "Hello, I'm Bloom. I'm here to listen. How are you feeling today?";
+      handleSpeech(initialGreeting);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDisclaimer]);
 
 
-  // Effect for setting up speech recognition
+  // --- Speech Recognition Setup ---
   useEffect(() => {
     if (typeof window === "undefined" || !("webkitSpeechRecognition" in window)) {
       console.log("Speech recognition not supported");
@@ -133,21 +107,38 @@ export default function TherapySession() {
     recognitionRef.current = new SpeechRecognition();
     const recognition = recognitionRef.current;
     
-    recognition.continuous = false; // Process speech after a pause.
+    recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
     recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
+    
+    recognition.onend = () => {
+      setIsListening(false);
+      // Automatically restart listening if the AI is not speaking.
+      // This handles cases where recognition stops due to silence.
+      if (!isAiSpeaking) {
+        recognition.start();
+      }
+    };
+    
     recognition.onerror = (event) => {
+        // The 'no-speech' error is common and means the user was silent.
+        // We can just ignore it and let onend handle the restart.
+        if (event.error === 'no-speech') {
+            return;
+        }
+        
         console.error("Speech recognition error:", event.error);
         setIsListening(false);
+
         if (event.error === 'not-allowed') {
           alert('Microphone access was denied. Please allow microphone access in your browser settings.');
         }
     };
     
     recognition.onresult = (event) => {
+        recognition.stop(); // Stop listening as soon as we have a result
         const finalTranscript = Array.from(event.results)
             .map(result => result[0])
             .map(result => result.transcript)
@@ -166,7 +157,7 @@ export default function TherapySession() {
         audioRef.current.src = "";
       }
     };
-  }, [handleSpeech]);
+  }, [handleSpeech, isAiSpeaking]);
 
   const toggleListen = () => {
     if (isAiSpeaking) return;
@@ -178,6 +169,12 @@ export default function TherapySession() {
     }
   };
 
+  const handleDisclaimerAgree = () => {
+      setShowDisclaimer(false);
+      // Start listening immediately after disclaimer is agreed to
+      setTimeout(() => recognitionRef.current?.start(), 100);
+  }
+
 
   if (!isMounted) {
     return (
@@ -188,7 +185,7 @@ export default function TherapySession() {
   }
 
   if (showDisclaimer) {
-    return <DisclaimerDialog onAgree={() => setShowDisclaimer(false)} />;
+    return <DisclaimerDialog onAgree={handleDisclaimerAgree} />;
   }
 
   return (
