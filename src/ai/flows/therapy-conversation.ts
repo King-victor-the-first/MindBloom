@@ -41,7 +41,7 @@ export async function therapyConversation(input: TherapyConversationInput): Prom
 const therapyPrompt = ai.definePrompt({
   name: 'therapyPrompt',
   input: { schema: z.object({
-    history: z.any(),
+    history: z.string(),
     message: z.string(),
   }) },
   output: { schema: z.object({ response: z.string() }) },
@@ -56,13 +56,7 @@ const therapyPrompt = ai.definePrompt({
   - If the user is in crisis, provide a supportive message and gently suggest they contact a crisis hotline or a mental health professional.
 
   Conversation History:
-  {{#each history}}
-    {{#if (eq role 'user')}}
-    User: {{content.[0].text}}
-    {{else}}
-    AI: {{content.[0].text}}
-    {{/if}}
-  {{/each}}
+  {{{history}}}
   
   User's latest message: {{{message}}}
   
@@ -104,8 +98,17 @@ const therapyConversationFlow = ai.defineFlow(
     outputSchema: TherapyConversationOutputSchema,
   },
   async (input) => {
+    
+    const historyText = input.history.map(h => {
+        if (h.role === 'user') {
+            return `User: ${h.content[0].text}`;
+        } else {
+            return `AI: ${h.content[0].text}`;
+        }
+    }).join('\n');
+
     const { output: textOutput } = await therapyPrompt({
-        history: input.history,
+        history: historyText,
         message: input.message,
     });
     const responseText = textOutput!.response;
