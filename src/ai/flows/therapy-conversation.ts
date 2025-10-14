@@ -29,7 +29,7 @@ export type TherapyConversationInput = z.infer<typeof TherapyConversationInputSc
 
 const TherapyConversationOutputSchema = z.object({
   response: z.string().describe("The AI's conversational response."),
-  audio: z.string().describe("The AI's response as a base64 encoded WAV audio string."),
+  audio: z.string().describe("The AI's response as a base64 encoded WAV audio string in a data URI format."),
 });
 
 export type TherapyConversationOutput = z.infer<typeof TherapyConversationOutputSchema>;
