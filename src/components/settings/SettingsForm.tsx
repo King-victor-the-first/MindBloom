@@ -22,7 +22,7 @@ import { generateSpeechSample } from "@/ai/flows/generate-speech-sample";
 const profileSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required" }),
   lastName: z.string().min(1, { message: "Last name is required" }),
-  email: z.string().email({ message: "Invalid email" }).or(z.literal("")),
+  email: z.string().email({ message: "Invalid email" }).or(z.literal("")).optional(),
   aiVoice: z.string().optional(),
 });
 
@@ -112,7 +112,7 @@ export default function SettingsForm() {
     
     setPlayingVoice(voiceId);
     try {
-        const sampleText = "Hello, I am an AI assistant.";
+        const sampleText = "Hi there, I am Bloom AI, your personal AI Therapy assistant";
         const { audio } = await generateSpeechSample({ text: sampleText, voiceName: voiceId });
 
         if (audioRef.current) {
@@ -271,3 +271,5 @@ export default function SettingsForm() {
     </Card>
   );
 }
+
+    
