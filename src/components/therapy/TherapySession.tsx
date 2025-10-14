@@ -202,12 +202,17 @@ export default function TherapySession() {
 
       </div>
       <div className="bg-black/50 p-6 flex justify-center items-center gap-8">
-        <Button onClick={toggleListen} size="lg" className={cn(
-            "rounded-full w-20 h-20 transition-colors",
-            isListening ? "bg-red-500 hover:bg-red-600" : "bg-gray-700 hover:bg-gray-600",
-            isAiSpeaking && "bg-gray-800 opacity-50 cursor-not-allowed"
-        )}
-        disabled={isAiSpeaking}
+        <Button 
+            onClick={toggleListen} 
+            size="lg" 
+            className={cn(
+                "rounded-full w-20 h-20 transition-all duration-300 shadow-lg",
+                isListening 
+                    ? "bg-primary/80 animate-pulse" 
+                    : "bg-primary",
+                isAiSpeaking && "bg-gray-700 opacity-50 cursor-not-allowed"
+            )}
+            disabled={isAiSpeaking}
         >
             {isListening ? <MicOff className="h-8 w-8"/> : <Mic className="h-8 w-8"/>}
         </Button>
