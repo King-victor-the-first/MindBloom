@@ -22,15 +22,17 @@ export default function DisclaimerDialog({ onAgree }: DisclaimerDialogProps) {
                         <ShieldAlert className="w-6 h-6 text-primary" />
                         Important Disclaimer
                     </AlertDialogTitle>
-                    <AlertDialogDescription className="pt-4 space-y-3 text-left">
-                        <div>
-                            MindBloom offers AI-powered conversations for wellness support and is not a substitute for professional medical advice, diagnosis, or treatment.
-                        </div>
-                        <div>
-                            This is an MVP and the AI may produce inaccurate or unintended information. It is not intended for use in crisis situations.
-                        </div>
-                        <div>
-                            If you are in a crisis, please contact a local emergency service immediately.
+                    <AlertDialogDescription asChild>
+                        <div className="pt-4 space-y-3 text-sm text-muted-foreground text-left">
+                            <p>
+                                MindBloom offers AI-powered conversations for wellness support and is not a substitute for professional medical advice, diagnosis, or treatment.
+                            </p>
+                            <p>
+                                This is an MVP and the AI may produce inaccurate or unintended information. It is not intended for use in crisis situations.
+                            </p>
+                            <p>
+                                If you are in a crisis, please contact a local emergency service immediately.
+                            </p>
                         </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
