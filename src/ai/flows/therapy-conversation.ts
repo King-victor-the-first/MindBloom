@@ -13,7 +13,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import wav from 'wav';
 import { googleAI } from '@genkit-ai/google-genai';
-import { MessageData } from 'genkit/ai';
+import type { MessageData } from 'genkit/ai';
 
 const TherapyConversationInputSchema = z.object({
   history: z.array(z.object({
@@ -39,7 +39,7 @@ export async function therapyConversation(input: TherapyConversationInput): Prom
   return therapyConversationFlow(input);
 }
 
-const therapyPrompt = `You are an AI therapist named Bloom. Your goal is to provide a safe, supportive, and empathetic space for the user to share their thoughts and feelings.
+const therapySystemPrompt = `You are an AI therapist named Bloom. Your goal is to provide a safe, supportive, and empathetic space for the user to share their thoughts and feelings.
   
   - Listen actively and respond with empathy and understanding.
   - Ask open-ended questions to encourage reflection.
@@ -88,7 +88,7 @@ const therapyConversationFlow = ai.defineFlow(
     // Step 1: Generate the text response.
     const textResponse = await ai.generate({
         model: 'googleai/gemini-2.5-flash',
-        system: therapyPrompt,
+        system: therapySystemPrompt,
         history: input.history as MessageData[],
         prompt: input.message,
     });
