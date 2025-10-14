@@ -53,7 +53,7 @@ const therapyPrompt = ai.definePrompt({
   - Keep your responses concise and conversational.
   - Maintain a calm and non-judgmental tone.
   - Do not diagnose or provide medical advice.
-  - If the user is in crisis, provide a supportive message and gently suggest they contact a crisis hotline or mental health professional.
+  - If the user is in crisis, provide a supportive message and gently suggest they contact a crisis hotline or a mental health professional.
 
   Conversation History:
   {{#each history}}
@@ -111,7 +111,7 @@ const therapyConversationFlow = ai.defineFlow(
     const responseText = textOutput!.response;
 
     const { media } = await ai.generate({
-        model: 'gemini-2.5-flash-preview-tts',
+        model: googleAI.model('gemini-2.5-flash-preview-tts'),
         config: {
           responseModalities: ['AUDIO'],
           speechConfig: {
