@@ -9,7 +9,7 @@
     {
       "id": "therapy-session-ai",
       "description": "AI avatar for the therapy session",
-      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/studio-8972653883-d4ab8.appspot.com/o/images%2Ftherapy_avatar.gif?alt=media&token=8d617c55-15a0-4c22-b605-728b1228532c",
+      "imageUrl": "/therapy-avatar.gif",
       "imageHint": "calm abstract"
     },
     {
