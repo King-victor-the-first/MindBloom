@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,39 @@ export default function TherapySession() {
     setVoice(savedVoice);
   }, []);
 
-  const handleSpeech = async (text: string) => {
+  const playAudio = (audioDataUri: string) => {
+    if (audioRef.current) {
+        audioRef.current.src = audioDataUri;
+        audioRef.current.play();
+        audioRef.current.onended = () => {
+            setIsAiSpeaking(false);
+        };
+        audioRef.current.onerror = () => {
+            console.error("Error playing audio.");
+            setIsAiSpeaking(false); // Ensure state is reset on error
+        };
+    }
+  };
+
+  // Fallback TTS using browser's SpeechSynthesis
+  const speak = useCallback((text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+    setIsAiSpeaking(true);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => {
+      setIsAiSpeaking(false);
+    };
+    utterance.onerror = (e) => {
+      console.error("SpeechSynthesis Error", e);
+      setIsAiSpeaking(false);
+    }
+    setTranscript((prev) => [...prev, { speaker: "ai", text }]);
+    setHistory((prev) => [...prev, { role: 'model', content: [{ text }] }]);
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const handleSpeech = useCallback(async (text: string) => {
     if (!text) return;
     setTranscript((prev) => [...prev, { speaker: "user", text }]);
     
@@ -58,44 +90,9 @@ export default function TherapySession() {
       console.error("Error with therapy conversation flow:", error);
       const errorMessage = "I'm having a little trouble connecting right now. Please give me a moment.";
       speak(errorMessage); // Fallback to browser TTS if AI TTS fails
-      setTranscript((prev) => [...prev, { speaker: "ai", text: errorMessage }]);
-    } finally {
-      // setIsAiSpeaking is handled by onended event of audio
     }
-  };
+  }, [history, voice, speak]);
   
-  const playAudio = (audioDataUri: string) => {
-    if (audioRef.current) {
-        audioRef.current.src = audioDataUri;
-        audioRef.current.play();
-        audioRef.current.onended = () => {
-            setIsAiSpeaking(false);
-        };
-        audioRef.current.onerror = () => {
-            console.error("Error playing audio.");
-            setIsAiSpeaking(false); // Ensure state is reset on error
-        };
-    }
-  };
-
-  // Fallback TTS using browser's SpeechSynthesis
-  const speak = (text: string) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-    setIsAiSpeaking(true);
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = () => {
-      setIsAiSpeaking(false);
-    };
-    utterance.onerror = (e) => {
-      console.error("SpeechSynthesis Error", e);
-      setIsAiSpeaking(false);
-    }
-    setTranscript((prev) => [...prev, { speaker: "ai", text }]);
-    setHistory((prev) => [...prev, { role: 'model', content: [{ text }] }]);
-    window.speechSynthesis.speak(utterance);
-  };
-
   const toggleListen = () => {
     if (!recognitionRef.current || isAiSpeaking) return;
     if (isListening) {
@@ -113,29 +110,31 @@ export default function TherapySession() {
 
     const SpeechRecognition = window.webkitSpeechRecognition;
     recognitionRef.current = new SpeechRecognition();
-    recognitionRef.current.continuous = true;
-    recognitionRef.current.interimResults = false;
-    recognitionRef.current.lang = "en-US";
+    const recognition = recognitionRef.current;
+    
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
 
     let finalTranscript = '';
-    recognitionRef.current.onresult = (event) => {
+    recognition.onresult = (event) => {
         finalTranscript = Array.from(event.results)
             .map(result => result[0])
             .map(result => result.transcript)
             .join('');
     };
 
-    recognitionRef.current.onstart = () => setIsListening(true);
+    recognition.onstart = () => setIsListening(true);
     
-    recognitionRef.current.onend = () => {
+    recognition.onend = () => {
         setIsListening(false);
         if (finalTranscript.trim()) {
-            handleSpeech(finalTranscript);
+            handleSpeech(finalTranscript.trim());
         }
         finalTranscript = '';
     };
 
-    recognitionRef.current.onerror = (event) => {
+    recognition.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
         setIsListening(false);
     };
@@ -146,15 +145,14 @@ export default function TherapySession() {
     }
 
     return () => {
-      recognitionRef.current?.stop();
+      recognition?.stop();
       window.speechSynthesis?.cancel();
       if(audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDisclaimer]);
+  }, [showDisclaimer, speak, handleSpeech]);
 
   if (!isMounted) {
     return (
@@ -223,3 +221,5 @@ export default function TherapySession() {
     </div>
   );
 }
+
+    
