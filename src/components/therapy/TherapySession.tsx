@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, PhoneOff, Loader2 } from "lucide-react";
@@ -165,7 +164,7 @@ export default function TherapySession() {
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
         <div className={cn("absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30", isAiSpeaking && 'animate-pulse')}/>
         <div className={cn("w-48 h-48 sm:w-64 sm:h-64 rounded-full overflow-hidden border-4 transition-all duration-500", isAiSpeaking ? 'border-primary shadow-[0_0_30px] shadow-primary/50' : 'border-gray-600')}>
-            {aiAvatar && <Image src={aiAvatar.imageUrl} alt="AI Therapist" width={300} height={300} data-ai-hint={aiAvatar.imageHint} />}
+            {aiAvatar && <img src={aiAvatar.imageUrl} alt="AI Therapist" width={300} height={300} data-ai-hint={aiAvatar.imageHint} className="w-full h-full object-cover" />}
         </div>
         <h2 className="text-2xl font-bold mt-6 font-headline">AI Therapist</h2>
         <p className="text-gray-300">Session in progress...</p>
