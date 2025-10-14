@@ -87,6 +87,7 @@ const therapyConversationFlow = ai.defineFlow(
     
     // Step 1: Generate the text response.
     const textResponse = await ai.generate({
+        model: 'googleai/gemini-2.5-flash',
         system: therapyPrompt,
         history: input.history as MessageData[],
         prompt: input.message,
