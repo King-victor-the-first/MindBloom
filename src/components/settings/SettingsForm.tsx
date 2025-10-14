@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -14,12 +15,24 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 const profileSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required" }),
   lastName: z.string().min(1, { message: "Last name is required" }),
   email: z.string().email().optional(),
+  aiVoice: z.string().optional(),
 });
+
+const availableVoices = [
+    { id: 'Alloy', name: 'Alloy (Default)' },
+    { id: 'Echo', name: 'Echo' },
+    { id: 'Fable', name: 'Fable' },
+    { id: 'Onyx', name: 'Onyx' },
+    { id: 'Nova', name: 'Nova' },
+    { id: 'Shimmer', name: 'Shimmer' },
+];
 
 export default function SettingsForm() {
   const { user } = useUser();
@@ -39,6 +52,7 @@ export default function SettingsForm() {
       firstName: "",
       lastName: "",
       email: "",
+      aiVoice: 'Alloy',
     },
   });
 
@@ -50,6 +64,8 @@ export default function SettingsForm() {
         email: userProfile.email || "",
       });
     }
+    const savedVoice = localStorage.getItem('aiVoice') || 'Alloy';
+    form.setValue('aiVoice', savedVoice);
   }, [userProfile, form]);
   
   const { isSubmitting } = form.formState;
@@ -67,8 +83,12 @@ export default function SettingsForm() {
 
         setDocumentNonBlocking(userDocRef, updatedProfile, { merge: true });
 
+        if (values.aiVoice) {
+            localStorage.setItem('aiVoice', values.aiVoice);
+        }
+
       toast({
-        title: "Profile Updated",
+        title: "Settings Saved",
         description: "Your changes have been saved successfully.",
       });
     } catch (error: any) {
@@ -91,9 +111,9 @@ export default function SettingsForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Edit Profile</CardTitle>
+        <CardTitle>Edit Profile & Settings</CardTitle>
         <CardDescription>
-          Update your personal information below.
+          Update your personal information and application preferences.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -103,6 +123,7 @@ export default function SettingsForm() {
             className="space-y-6"
           >
             <div className="space-y-4">
+              <h3 className="text-lg font-medium">Personal Information</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -147,6 +168,39 @@ export default function SettingsForm() {
                   </FormItem>
                 )}
               />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-medium">AI Voice Settings</h3>
+                 <FormField
+                  control={form.control}
+                  name="aiVoice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Therapist Voice</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a voice for the AI therapist" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableVoices.map(voice => (
+                            <SelectItem key={voice.id} value={voice.id}>
+                              {voice.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Choose the voice and accent for your AI therapy sessions.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
             </div>
 
             <div className="flex justify-end">

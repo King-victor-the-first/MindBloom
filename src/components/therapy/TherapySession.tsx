@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -29,12 +30,15 @@ export default function TherapySession() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
+  const [voice, setVoice] = useState('Alloy');
 
   const aiAvatar = PlaceHolderImages.find((p) => p.id === "therapy-session-ai");
 
   useEffect(() => {
     setIsMounted(true);
     audioRef.current = new Audio();
+    const savedVoice = localStorage.getItem('aiVoice') || 'Alloy';
+    setVoice(savedVoice);
   }, []);
 
   const handleSpeech = async (text: string) => {
@@ -46,17 +50,17 @@ export default function TherapySession() {
     
     setIsAiSpeaking(true);
     try {
-      const result = await therapyConversation({ history: newHistory, message: text });
+      const result = await therapyConversation({ history: newHistory, message: text, voiceName: voice });
       playAudio(result.audio);
       setTranscript((prev) => [...prev, { speaker: "ai", text: result.response }]);
       setHistory((prev) => [...prev, { role: 'model', content: [{ text: result.response }] }]);
     } catch (error) {
       console.error("Error with therapy conversation flow:", error);
       const errorMessage = "I'm having a little trouble connecting right now. Please give me a moment.";
-      speak(errorMessage);
+      speak(errorMessage); // Fallback to browser TTS if AI TTS fails
       setTranscript((prev) => [...prev, { speaker: "ai", text: errorMessage }]);
     } finally {
-      setIsAiSpeaking(false);
+      // setIsAiSpeaking is handled by onended event of audio
     }
   };
   
@@ -67,9 +71,14 @@ export default function TherapySession() {
         audioRef.current.onended = () => {
             setIsAiSpeaking(false);
         };
+        audioRef.current.onerror = () => {
+            console.error("Error playing audio.");
+            setIsAiSpeaking(false); // Ensure state is reset on error
+        };
     }
   };
 
+  // Fallback TTS using browser's SpeechSynthesis
   const speak = (text: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
 
@@ -78,13 +87,17 @@ export default function TherapySession() {
     utterance.onend = () => {
       setIsAiSpeaking(false);
     };
+    utterance.onerror = (e) => {
+      console.error("SpeechSynthesis Error", e);
+      setIsAiSpeaking(false);
+    }
     setTranscript((prev) => [...prev, { speaker: "ai", text }]);
     setHistory((prev) => [...prev, { role: 'model', content: [{ text }] }]);
     window.speechSynthesis.speak(utterance);
   };
 
   const toggleListen = () => {
-    if (!recognitionRef.current) return;
+    if (!recognitionRef.current || isAiSpeaking) return;
     if (isListening) {
       recognitionRef.current.stop();
     } else {
@@ -106,22 +119,19 @@ export default function TherapySession() {
 
     let finalTranscript = '';
     recognitionRef.current.onresult = (event) => {
-        let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                finalTranscript += event.results[i][0].transcript;
-            } else {
-                interimTranscript += event.results[i][0].transcript;
-            }
-        }
-        // We will only handle speech when the user stops talking
+        finalTranscript = Array.from(event.results)
+            .map(result => result[0])
+            .map(result => result.transcript)
+            .join('');
     };
 
     recognitionRef.current.onstart = () => setIsListening(true);
     
     recognitionRef.current.onend = () => {
         setIsListening(false);
-        handleSpeech(finalTranscript);
+        if (finalTranscript.trim()) {
+            handleSpeech(finalTranscript);
+        }
         finalTranscript = '';
     };
 
@@ -133,7 +143,6 @@ export default function TherapySession() {
     // Auto start listening after disclaimer
     if (!showDisclaimer) {
         speak("Hello, I'm here to listen. How are you feeling today?");
-        // Don't auto-toggle listen, let user initiate
     }
 
     return () => {
@@ -195,8 +204,11 @@ export default function TherapySession() {
       <div className="bg-black/50 p-6 flex justify-center items-center gap-8">
         <Button onClick={toggleListen} size="lg" className={cn(
             "rounded-full w-20 h-20 transition-colors",
-            isListening ? "bg-red-500 hover:bg-red-600" : "bg-gray-700 hover:bg-gray-600"
-        )}>
+            isListening ? "bg-red-500 hover:bg-red-600" : "bg-gray-700 hover:bg-gray-600",
+            isAiSpeaking && "bg-gray-800 opacity-50 cursor-not-allowed"
+        )}
+        disabled={isAiSpeaking}
+        >
             {isListening ? <MicOff className="h-8 w-8"/> : <Mic className="h-8 w-8"/>}
         </Button>
         <Button onClick={() => router.push('/dashboard')} size="lg" variant="destructive" className="rounded-full w-20 h-20">

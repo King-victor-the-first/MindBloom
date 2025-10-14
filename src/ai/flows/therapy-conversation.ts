@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -21,6 +22,7 @@ const TherapyConversationInputSchema = z.object({
     }))
   })).describe('The conversation history.'),
   message: z.string().describe("The user's latest message."),
+  voiceName: z.string().optional().describe("The voice to use for the TTS response."),
 });
 
 export type TherapyConversationInput = z.infer<typeof TherapyConversationInputSchema>;
@@ -38,7 +40,10 @@ export async function therapyConversation(input: TherapyConversationInput): Prom
 
 const therapyPrompt = ai.definePrompt({
   name: 'therapyPrompt',
-  input: { schema: TherapyConversationInputSchema },
+  input: { schema: z.object({
+    history: z.any(),
+    message: z.string(),
+  }) },
   output: { schema: z.object({ response: z.string() }) },
   prompt: `You are an AI therapist named Bloom. Your goal is to provide a safe, supportive, and empathetic space for the user to share their thoughts and feelings.
   
@@ -99,7 +104,10 @@ const therapyConversationFlow = ai.defineFlow(
     outputSchema: TherapyConversationOutputSchema,
   },
   async (input) => {
-    const { output: textOutput } = await therapyPrompt(input);
+    const { output: textOutput } = await therapyPrompt({
+        history: input.history,
+        message: input.message,
+    });
     const responseText = textOutput!.response;
 
     const { media } = await ai.generate({
@@ -108,7 +116,7 @@ const therapyConversationFlow = ai.defineFlow(
           responseModalities: ['AUDIO'],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Alloy' },
+              prebuiltVoiceConfig: { voiceName: input.voiceName || 'Alloy' },
             },
           },
         },
