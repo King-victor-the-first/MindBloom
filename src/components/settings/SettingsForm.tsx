@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 const profileSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required" }),
   lastName: z.string().min(1, { message: "Last name is required" }),
-  email: z.string().email().optional(),
+  email: z.string().email({ message: "Invalid email" }).or(z.literal("")),
   aiVoice: z.string().optional(),
 });
 
