@@ -13,6 +13,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import wav from 'wav';
 import { googleAI } from '@genkit-ai/google-genai';
+import { MessageData } from 'genkit/ai';
 
 const TherapyConversationInputSchema = z.object({
   history: z.array(z.object({
@@ -62,7 +63,7 @@ async function toWav(
         bitDepth: sampleWidth * 8,
       });
   
-      let bufs = [] as any[];
+      const bufs: any[] = [];
       writer.on('error', reject);
       writer.on('data', function (d) {
         bufs.push(d);
@@ -84,34 +85,35 @@ const therapyConversationFlow = ai.defineFlow(
   },
   async (input) => {
     
-    const { text: responseText } = await ai.generate({
+    // Combine all generation logic into a single call
+    const { text: responseText, media } = await ai.generate({
         system: therapyPrompt,
-        history: input.history,
+        history: input.history as MessageData[], // Cast to the correct type
         prompt: input.message,
-    });
-    
-    const { media } = await ai.generate({
         model: googleAI.model('gemini-2.5-flash-preview-tts'),
         config: {
-          responseModalities: ['AUDIO'],
+          responseModalities: ['AUDIO', 'TEXT'], // Request both text and audio
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName: input.voiceName || 'Algenib' },
             },
           },
         },
-        prompt: responseText,
-      });
+    });
   
-      if (!media) {
-        throw new Error('no media returned');
-      }
+    if (!media) {
+      throw new Error('No media was returned from the TTS model.');
+    }
+    
+    if (!responseText) {
+        throw new Error('No text response was returned from the model.');
+    }
 
-      const audioBuffer = Buffer.from(
-        media.url.substring(media.url.indexOf(',') + 1),
-        'base64'
-      );
-      const audioBase64 = await toWav(audioBuffer);
+    const audioBuffer = Buffer.from(
+      media.url.substring(media.url.indexOf(',') + 1),
+      'base64'
+    );
+    const audioBase64 = await toWav(audioBuffer);
 
     return {
         response: responseText,
