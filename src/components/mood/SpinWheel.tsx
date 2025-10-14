@@ -1,93 +1,67 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { moodBoosters } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Gift } from "lucide-react";
 
-const colors = [
-  "#a2d2ff", "#bde0fe", "#ffafcc", "#ffc8dd", "#cdb4db", 
-  "#a2d2ff", "#bde0fe", "#ffafcc",
-];
-
 export default function SpinWheel() {
-  const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<string | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const [visibleTaskIndex, setVisibleTaskIndex] = useState(0);
 
-  const spin = () => {
-    if (spinning) return;
+  useEffect(() => {
+    let spinInterval: NodeJS.Timeout;
+    if (spinning) {
+      spinInterval = setInterval(() => {
+        setVisibleTaskIndex((prevIndex) => (prevIndex + 1) % moodBoosters.length);
+      }, 100);
+
+      setTimeout(() => {
+        clearInterval(spinInterval);
+        const finalIndex = Math.floor(Math.random() * moodBoosters.length);
+        setVisibleTaskIndex(finalIndex);
+        setResult(moodBoosters[finalIndex].text);
+        setSpinning(false);
+      }, 2000); // Spin for 2 seconds
+    }
+
+    return () => clearInterval(spinInterval);
+  }, [spinning]);
+
+  const startSpin = () => {
+    setResult(null);
     setSpinning(true);
-    setSelectedTask(null);
-    
-    const newRotation = rotation + 360 * 5 + Math.random() * 360;
-    setRotation(newRotation);
-
-    setTimeout(() => {
-      setSpinning(false);
-      const degrees = newRotation % 360;
-      const arc = 360 / moodBoosters.length;
-      const index = Math.floor((360 - degrees + arc / 2) % 360 / arc);
-      setSelectedTask(moodBoosters[index].text);
-    }, 4000); // Corresponds to the transition duration
   };
-
-  const segmentAngle = 360 / moodBoosters.length;
+  
+  const selectedTask = moodBoosters[visibleTaskIndex];
+  const Icon = selectedTask.icon;
 
   return (
     <div className="relative flex flex-col items-center justify-center p-4">
-      <div className="relative w-80 h-80 sm:w-96 sm:h-96">
+      <div className="w-full max-w-sm h-48 bg-card border rounded-lg flex flex-col items-center justify-center overflow-hidden shadow-inner">
         <div 
-          className="absolute top-1/2 left-1/2 w-8 h-8 -mt-4 -ml-4 rounded-full bg-white border-4 border-primary z-20"
-        />
-        <div
-          className="absolute top-[-10px] left-1/2 -translate-x-1/2 z-20"
-          style={{
-            clipPath: 'polygon(50% 100%, 0 0, 100% 0)',
-            width: '20px',
-            height: '30px',
-            backgroundColor: 'hsl(var(--primary))'
-          }}
-        />
-        <div
-          className="relative w-full h-full rounded-full border-8 border-card shadow-lg overflow-hidden transition-transform duration-[4000ms]"
-          style={{ 
-            transform: `rotate(${rotation}deg)`,
-            transitionTimingFunction: 'cubic-bezier(.17,.88,.24,1)'
-          }}
+          className={cn(
+            "flex flex-col items-center justify-center gap-4 transition-transform duration-100",
+            spinning && "animate-none"
+          )}
+          style={{ transform: `translateY(0)` }} // This could be used for more complex animations
         >
-          {moodBoosters.map((booster, index) => {
-            const Icon = booster.icon;
-            return (
-              <div
-                key={index}
-                className="absolute w-1/2 h-1/2 origin-bottom-right"
-                style={{
-                  transform: `rotate(${index * segmentAngle}deg)`,
-                  clipPath: `polygon(0 0, 100% 0, 100% 100%, 0 0)`,
-                  backgroundColor: colors[index % colors.length],
-                }}
-              >
-                <div
-                  className="absolute w-full h-full flex items-center justify-center text-primary-foreground"
-                  style={{ transform: `rotate(${segmentAngle / 2}deg) translate(0, -35%)`}}
-                >
-                  <Icon className="w-8 h-8 text-black/60" style={{ transform: 'rotate(0deg)'}} />
-                </div>
-              </div>
-            );
-            })}
+            <Icon className="w-12 h-12 text-primary" />
+            <p className="text-lg font-semibold text-center px-4 h-12">
+                {spinning ? moodBoosters[visibleTaskIndex].text : (result || "Spin for a happy task!")}
+            </p>
         </div>
       </div>
-      <Button onClick={spin} disabled={spinning} size="lg" className="mt-8 rounded-full shadow-lg">
+      <Button onClick={startSpin} disabled={spinning} size="lg" className="mt-8 rounded-full shadow-lg">
         {spinning ? "Spinning..." : "Spin the Wheel"}
       </Button>
-      {selectedTask && !spinning && (
-        <div className="mt-6 text-center bg-card p-4 rounded-lg shadow-md max-w-sm animate-in fade-in zoom-in-95">
+      {result && !spinning && (
+        <div className="mt-6 text-center bg-muted/50 p-4 rounded-lg shadow-md max-w-sm animate-in fade-in zoom-in-95">
           <Gift className="w-8 h-8 mx-auto text-primary mb-2" />
           <h3 className="font-headline text-lg font-semibold">Your happy task is:</h3>
-          <p className="text-foreground mt-1">{selectedTask}</p>
+          <p className="text-foreground mt-1">{result}</p>
         </div>
       )}
     </div>
