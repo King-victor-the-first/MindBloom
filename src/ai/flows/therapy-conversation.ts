@@ -38,14 +38,7 @@ export async function therapyConversation(input: TherapyConversationInput): Prom
   return therapyConversationFlow(input);
 }
 
-const therapyPrompt = ai.definePrompt({
-  name: 'therapyPrompt',
-  input: { schema: z.object({
-    history: z.string(),
-    message: z.string(),
-  }) },
-  output: { schema: z.object({ response: z.string() }) },
-  prompt: `You are an AI therapist named Bloom. Your goal is to provide a safe, supportive, and empathetic space for the user to share their thoughts and feelings.
+const therapyPrompt = `You are an AI therapist named Bloom. Your goal is to provide a safe, supportive, and empathetic space for the user to share their thoughts and feelings.
   
   - Listen actively and respond with empathy and understanding.
   - Ask open-ended questions to encourage reflection.
@@ -54,15 +47,7 @@ const therapyPrompt = ai.definePrompt({
   - Maintain a calm and non-judgmental tone.
   - Do not diagnose or provide medical advice.
   - If the user is in crisis, provide a supportive message and gently suggest they contact a crisis hotline or a mental health professional.
-
-  Conversation History:
-  {{{history}}}
-  
-  User's latest message: {{{message}}}
-  
-  Your response:
-  `,
-});
+  `;
 
 async function toWav(
     pcmData: Buffer,
@@ -99,20 +84,12 @@ const therapyConversationFlow = ai.defineFlow(
   },
   async (input) => {
     
-    const historyText = input.history.map(h => {
-        if (h.role === 'user') {
-            return `User: ${h.content[0].text}`;
-        } else {
-            return `AI: ${h.content[0].text}`;
-        }
-    }).join('\n');
-
-    const { output: textOutput } = await therapyPrompt({
-        history: historyText,
-        message: input.message,
+    const { text: responseText } = await ai.generate({
+        system: therapyPrompt,
+        history: input.history,
+        prompt: input.message,
     });
-    const responseText = textOutput!.response;
-
+    
     const { media } = await ai.generate({
         model: googleAI.model('gemini-2.5-flash-preview-tts'),
         config: {
