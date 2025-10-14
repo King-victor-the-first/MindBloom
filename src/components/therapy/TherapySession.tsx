@@ -41,7 +41,7 @@ export default function TherapySession() {
     setVoice(savedVoice);
   }, []);
 
-  const playAudio = (audioDataUri: string) => {
+  const playAudio = useCallback((audioDataUri: string) => {
     if (audioRef.current) {
         audioRef.current.src = audioDataUri;
         audioRef.current.play();
@@ -53,7 +53,7 @@ export default function TherapySession() {
             setIsAiSpeaking(false); // Ensure state is reset on error
         };
     }
-  };
+  }, []);
 
   // Fallback TTS using browser's SpeechSynthesis
   const speak = useCallback((text: string) => {
@@ -91,7 +91,7 @@ export default function TherapySession() {
       const errorMessage = "I'm having a little trouble connecting right now. Please give me a moment.";
       speak(errorMessage); // Fallback to browser TTS if AI TTS fails
     }
-  }, [history, voice, speak]);
+  }, [history, voice, playAudio, speak]);
   
   const toggleListen = () => {
     if (!recognitionRef.current || isAiSpeaking) return;
@@ -152,6 +152,8 @@ export default function TherapySession() {
         audioRef.current.src = "";
       }
     };
+    // speak and handleSpeech are now memoized, so this is safe.
+    // We only want to run this effect when showDisclaimer changes.
   }, [showDisclaimer, speak, handleSpeech]);
 
   if (!isMounted) {
@@ -206,7 +208,7 @@ export default function TherapySession() {
             className={cn(
                 "rounded-full w-20 h-20 transition-all duration-300 shadow-lg",
                 isListening 
-                    ? "bg-primary/80 animate-pulse" 
+                    ? "bg-red-500 hover:bg-red-600" 
                     : "bg-primary",
                 isAiSpeaking && "bg-gray-700 opacity-50 cursor-not-allowed"
             )}
@@ -222,4 +224,3 @@ export default function TherapySession() {
   );
 }
 
-    
