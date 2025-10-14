@@ -9,14 +9,14 @@
     {
       "id": "therapy-session-ai",
       "description": "AI avatar for the therapy session",
-      "imageUrl": "/therapy-avatar.gif",
-      "imageHint": "calm abstract"
+      "imageUrl": "/Bloomaiavatar.webm",
+      "imageHint": "Bloom AI"
     },
     {
       "id": "app-logo",
       "description": "The MindBloom application logo",
       "imageUrl": "/mindbloomlogo.png",
-      "imageHint": "colorful flower"
+      "imageHint": "NindBloom logo"
     }
   ]
 }
