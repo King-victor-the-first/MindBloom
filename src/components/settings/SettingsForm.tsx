@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,10 +13,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, PlayCircle } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { generateSpeechSample } from "@/ai/flows/generate-speech-sample";
 
 const profileSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required" }),
@@ -38,6 +39,8 @@ export default function SettingsForm() {
   const { user } = useUser();
   const firestore = getFirestore();
   const { toast } = useToast();
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -66,6 +69,9 @@ export default function SettingsForm() {
     }
     const savedVoice = localStorage.getItem('aiVoice') || 'Alloy';
     form.setValue('aiVoice', savedVoice);
+
+    // Initialize Audio element on client
+    audioRef.current = new Audio();
   }, [userProfile, form]);
   
   const { isSubmitting } = form.formState;
@@ -99,6 +105,31 @@ export default function SettingsForm() {
       });
     }
   };
+
+  const handlePlaySample = async (voiceId: string) => {
+    if (playingVoice) return; // Prevent multiple requests
+    
+    setPlayingVoice(voiceId);
+    try {
+        const sampleText = "Hello, I am an AI assistant.";
+        const { audio } = await generateSpeechSample({ text: sampleText, voiceName: voiceId });
+
+        if (audioRef.current) {
+            audioRef.current.src = audio;
+            audioRef.current.play();
+            audioRef.current.onended = () => setPlayingVoice(null);
+            audioRef.current.onerror = () => {
+                toast({ title: "Error playing audio", variant: "destructive" });
+                setPlayingVoice(null);
+            };
+        }
+    } catch (err) {
+        console.error("Error generating speech sample", err);
+        toast({ title: "Could not generate voice sample", variant: "destructive" });
+        setPlayingVoice(null);
+    }
+  }
+
 
   if (isProfileLoading) {
     return (
@@ -197,9 +228,24 @@ export default function SettingsForm() {
                         </FormControl>
                         <SelectContent>
                           {availableVoices.map(voice => (
-                            <SelectItem key={voice.id} value={voice.id}>
-                              {voice.name}
-                            </SelectItem>
+                            <div key={voice.id} className="flex items-center justify-between pr-2">
+                                <SelectItem value={voice.id} className="w-full">
+                                    {voice.name}
+                                </SelectItem>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePlaySample(voice.id);
+                                    }}
+                                    disabled={!!playingVoice}
+                                >
+                                    {playingVoice === voice.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-5 h-5" />}
+                                </Button>
+                            </div>
                           ))}
                         </SelectContent>
                       </Select>
