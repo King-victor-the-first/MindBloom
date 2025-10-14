@@ -30,14 +30,14 @@ export default function TherapySession() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
-  const [voice, setVoice] = useState('Alloy');
+  const [voice, setVoice] = useState('Algenib');
 
   const aiAvatar = PlaceHolderImages.find((p) => p.id === "therapy-session-ai");
 
   useEffect(() => {
     setIsMounted(true);
     audioRef.current = new Audio();
-    const savedVoice = localStorage.getItem('aiVoice') || 'Alloy';
+    const savedVoice = localStorage.getItem('aiVoice') || 'Algenib';
     setVoice(savedVoice);
   }, []);
 

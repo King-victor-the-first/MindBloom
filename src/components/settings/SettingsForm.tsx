@@ -27,12 +27,13 @@ const profileSchema = z.object({
 });
 
 const availableVoices = [
-    { id: 'Alloy', name: 'Alloy (Default)' },
-    { id: 'Echo', name: 'Echo' },
-    { id: 'Fable', name: 'Fable' },
-    { id: 'Onyx', name: 'Onyx' },
-    { id: 'Nova', name: 'Nova' },
-    { id: 'Shimmer', name: 'Shimmer' },
+    { id: 'Algenib', name: 'Algenib (Default)' },
+    { id: 'Achernar', name: 'Achernar' },
+    { id: 'Schedar', name: 'Schedar' },
+    { id: 'Umbriel', name: 'Umbriel' },
+    { id: 'Puck', name: 'Puck' },
+    { id: 'Gacrux', name: 'Gacrux' },
+    { id: 'Zephyr', name: 'Zephyr' },
 ];
 
 export default function SettingsForm() {
@@ -55,7 +56,7 @@ export default function SettingsForm() {
       firstName: "",
       lastName: "",
       email: "",
-      aiVoice: 'Alloy',
+      aiVoice: 'Algenib',
     },
   });
 
@@ -67,7 +68,7 @@ export default function SettingsForm() {
         email: userProfile.email || "",
       });
     }
-    const savedVoice = localStorage.getItem('aiVoice') || 'Alloy';
+    const savedVoice = localStorage.getItem('aiVoice') || 'Algenib';
     form.setValue('aiVoice', savedVoice);
 
     // Initialize Audio element on client

@@ -116,7 +116,7 @@ const therapyConversationFlow = ai.defineFlow(
           responseModalities: ['AUDIO'],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: input.voiceName || 'Alloy' },
+              prebuiltVoiceConfig: { voiceName: input.voiceName || 'Algenib' },
             },
           },
         },
