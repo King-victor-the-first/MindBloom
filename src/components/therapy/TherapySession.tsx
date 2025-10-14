@@ -43,10 +43,13 @@ export default function TherapySession() {
 
   const playAudio = useCallback((audioDataUri: string) => {
     if (audioRef.current) {
+        setIsAiSpeaking(true);
         audioRef.current.src = audioDataUri;
         audioRef.current.play();
         audioRef.current.onended = () => {
             setIsAiSpeaking(false);
+            // After AI finishes speaking, start listening for the user again.
+            recognitionRef.current?.start();
         };
         audioRef.current.onerror = () => {
             console.error("Error playing audio.");
@@ -55,28 +58,9 @@ export default function TherapySession() {
     }
   }, []);
 
-  // Fallback TTS using browser's SpeechSynthesis
-  const speak = useCallback((text: string) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-    setIsAiSpeaking(true);
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = () => {
-      setIsAiSpeaking(false);
-    };
-    utterance.onerror = (e) => {
-      console.error("SpeechSynthesis Error", e);
-      setIsAiSpeaking(false);
-    }
-    setTranscript((prev) => [...prev, { speaker: "ai", text }]);
-    setHistory((prev) => [...prev, { role: 'model', content: [{ text }] }]);
-    window.speechSynthesis.speak(utterance);
-  }, []);
-  
   const handleSpeech = useCallback(async (text: string) => {
     if (!text || isAiSpeaking) return;
 
-    setIsAiSpeaking(true);
     const userMessage: TranscriptItem = { speaker: "user", text };
     setTranscript((prev) => [...prev, userMessage]);
 
@@ -96,8 +80,12 @@ export default function TherapySession() {
       const errorMessage = "I'm having a little trouble connecting right now. Please give me a moment.";
       // Using speak fallback if AI TTS fails
       if (typeof window !== "undefined" && window.speechSynthesis) {
+        setIsAiSpeaking(true);
         const utterance = new SpeechSynthesisUtterance(errorMessage);
-        utterance.onend = () => setIsAiSpeaking(false);
+        utterance.onend = () => {
+            setIsAiSpeaking(false);
+            recognitionRef.current?.start();
+        };
         utterance.onerror = () => setIsAiSpeaking(false);
         setTranscript((prev) => [...prev, { speaker: 'ai', text: errorMessage }]);
         setHistory((prev) => [...prev, { role: 'model', content: [{text: errorMessage}] }]);
@@ -107,20 +95,15 @@ export default function TherapySession() {
       }
     }
   }, [history, voice, playAudio]);
-  
-  const toggleListen = () => {
-    if (!recognitionRef.current || isAiSpeaking) return;
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      recognitionRef.current.start();
-    }
-  };
 
-  // Effect for initial greeting
+   // Effect for initial greeting
   useEffect(() => {
     if (!showDisclaimer) {
-        handleSpeech("Hello, I'm Bloom. I'm here to listen. How are you feeling today?");
+        // A small delay to ensure the user is ready.
+        const timer = setTimeout(() => {
+            handleSpeech("Hello, I'm Bloom. I'm here to listen. How are you feeling today?");
+        }, 500);
+        return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDisclaimer]);
@@ -137,7 +120,7 @@ export default function TherapySession() {
     recognitionRef.current = new SpeechRecognition();
     const recognition = recognitionRef.current;
     
-    recognition.continuous = true;
+    recognition.continuous = false; // Process speech after a pause.
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
@@ -146,6 +129,9 @@ export default function TherapySession() {
     recognition.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
         setIsListening(false);
+        if (event.error === 'not-allowed') {
+          alert('Microphone access was denied. Please allow microphone access in your browser settings.');
+        }
     };
     
     recognition.onresult = (event) => {
@@ -160,7 +146,7 @@ export default function TherapySession() {
     };
 
     return () => {
-      recognition?.stop();
+      recognition?.abort();
       window.speechSynthesis?.cancel();
       if(audioRef.current) {
         audioRef.current.pause();
@@ -168,6 +154,16 @@ export default function TherapySession() {
       }
     };
   }, [handleSpeech]);
+
+  const toggleListen = () => {
+    if (isAiSpeaking) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+    } else {
+      recognitionRef.current?.start();
+    }
+  };
 
 
   if (!isMounted) {
@@ -222,7 +218,7 @@ export default function TherapySession() {
             className={cn(
                 "rounded-full w-20 h-20 transition-all duration-300 shadow-lg",
                  isListening 
-                    ? "bg-primary/70 animate-pulse" 
+                    ? "bg-red-500/70 animate-pulse" 
                     : "bg-primary",
                 isAiSpeaking && "bg-gray-700 opacity-50 cursor-not-allowed"
             )}
@@ -237,4 +233,5 @@ export default function TherapySession() {
     </div>
   );
 }
+
 
