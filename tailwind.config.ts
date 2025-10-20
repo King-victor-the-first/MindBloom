@@ -112,7 +112,7 @@ export default {
         'siri-1': 'siri-1 1s ease-in-out infinite',
         'siri-2': 'siri-2 1s ease-in-out infinite 0.2s',
         'siri-3': 'siri-3 1s ease-in-out infinite 0.4s',
-        'spin-continuous': 'spin-continuous 1s linear infinite',
+        'spin-continuous': 'spin-continuous .5s linear infinite',
       },
     },
   },
