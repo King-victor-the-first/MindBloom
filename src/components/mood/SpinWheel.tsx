@@ -1,108 +1,112 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { moodBoosters } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Gift, Play, Square } from "lucide-react";
+import { Play, Gift } from "lucide-react";
+
+// Select a subset of tasks for the wheel for better display
+const wheelTasks = moodBoosters.slice(0, 8);
+const segmentAngle = 360 / wheelTasks.length;
+
+const segmentColors = [
+  "bg-blue-300",
+  "bg-green-300",
+  "bg-yellow-300",
+  "bg-red-300",
+  "bg-indigo-300",
+  "bg-purple-300",
+  "bg-pink-300",
+  "bg-teal-300",
+];
 
 export default function SpinWheel() {
   const [isSpinning, setIsSpinning] = useState(false);
-  const [isStopping, setIsStopping] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  const [visibleTaskIndex, setVisibleTaskIndex] = useState(0);
-  const spinIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [rotation, setRotation] = useState(0);
 
-  useEffect(() => {
-    if (isSpinning) {
-      spinIntervalRef.current = setInterval(() => {
-        setVisibleTaskIndex((prevIndex) => (prevIndex + 1) % moodBoosters.length);
-      }, 100);
-    } else {
-      if (spinIntervalRef.current) {
-        clearInterval(spinIntervalRef.current);
-      }
-    }
+  const handleSpin = () => {
+    if (isSpinning) return;
 
-    return () => {
-      if (spinIntervalRef.current) {
-        clearInterval(spinIntervalRef.current);
-      }
-    };
-  }, [isSpinning]);
+    setIsSpinning(true);
+    setResult(null);
 
-  const handleToggleSpin = () => {
-    if (isSpinning) {
-      // Logic to stop the wheel
-      if (spinIntervalRef.current) {
-        clearInterval(spinIntervalRef.current);
-      }
-      setIsStopping(true);
+    const spinCycles = Math.floor(Math.random() * 3) + 5; // 5 to 7 full spins
+    const randomIndex = Math.floor(Math.random() * wheelTasks.length);
+    const stopAngle = randomIndex * segmentAngle;
+    
+    // Calculate total rotation
+    const totalRotation = (spinCycles * 360) + stopAngle;
+
+    // We want the pointer to point to the middle of the segment
+    const finalRotation = totalRotation - (segmentAngle / 2);
+    
+    setRotation(finalRotation);
+
+    // Wait for the animation to finish
+    setTimeout(() => {
+      setResult(wheelTasks[randomIndex].text);
       setIsSpinning(false);
-      
-      // Create a "slowing down" effect
-      let slowDownSpeed = 150;
-      let iterations = Math.floor(Math.random() * 5) + 5; // 5 to 9 more ticks
-
-      const slowDown = () => {
-        if (iterations > 0) {
-          setVisibleTaskIndex((prevIndex) => (prevIndex + 1) % moodBoosters.length);
-          iterations--;
-          setTimeout(slowDown, slowDownSpeed);
-          slowDownSpeed *= 1.4; // Gradually increase delay
-        } else {
-          // Final result
-          const finalIndex = (visibleTaskIndex + 1) % moodBoosters.length;
-          setVisibleTaskIndex(finalIndex);
-          setResult(moodBoosters[finalIndex].text);
-          setIsStopping(false);
-        }
-      };
-      slowDown();
-
-    } else {
-      // Logic to start the wheel
-      setResult(null);
-      setIsSpinning(true);
-    }
+    }, 6000); // This duration should match the CSS transition duration
   };
-  
-  const selectedTask = moodBoosters[visibleTaskIndex];
-  const Icon = selectedTask.icon;
 
   return (
     <div className="relative flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-sm h-48 bg-card border rounded-lg flex flex-col items-center justify-center overflow-hidden shadow-inner">
-        <div 
-          className={cn(
-            "flex flex-col items-center justify-center gap-4 transition-transform duration-100",
-            (isSpinning || isStopping) && "animate-none"
-          )}
-          style={{ transform: `translateY(0)` }}
+      <div className="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center mb-8">
+        {/* Pointer */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10" style={{ transform: 'translateX(-50%) translateY(-50%) rotate(180deg)' }}>
+          <div className="w-0 h-0 
+            border-l-[15px] border-l-transparent
+            border-r-[15px] border-r-transparent
+            border-t-[30px] border-t-primary"
+          />
+        </div>
+
+        {/* Wheel */}
+        <div
+          className="relative w-full h-full rounded-full border-4 border-muted shadow-lg overflow-hidden transition-transform duration-[6000ms] ease-out"
+          style={{ transform: `rotate(-${rotation}deg)` }}
         >
-            <Icon className="w-12 h-12 text-primary" />
-            <p className="text-lg font-semibold text-center px-4 h-12">
-                {(isSpinning || isStopping) ? moodBoosters[visibleTaskIndex].text : (result || "Click Spin to start!")}
-            </p>
+          {wheelTasks.map((task, index) => {
+            const Icon = task.icon;
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "absolute w-1/2 h-1/2 origin-bottom-right flex items-center justify-center",
+                  segmentColors[index % segmentColors.length]
+                )}
+                style={{
+                  transform: `rotate(${index * segmentAngle}deg)`,
+                  clipPath: `polygon(0 0, 100% 0, 100% 100%, 0 0)`
+                }}
+              >
+                <div 
+                  className="flex flex-col items-center justify-center text-center -rotate-45 -translate-y-4"
+                  style={{ transform: `rotate(${-segmentAngle / 2}deg) translate(0, -25%)`}}
+                >
+                   <Icon className="w-6 h-6 text-foreground/70" />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
-      <Button onClick={handleToggleSpin} disabled={isStopping} size="lg" className="mt-8 rounded-full shadow-lg w-48">
+
+      <Button onClick={handleSpin} disabled={isSpinning} size="lg" className="rounded-full shadow-lg w-48">
         {isSpinning ? (
-            <>
-                <Square className="mr-2 h-4 w-4 fill-current" />
-                Stop
-            </>
-        ) : isStopping ? (
-            "Stopping..."
+          "Spinning..."
         ) : (
-            <>
-                <Play className="mr-2 h-4 w-4 fill-current" />
-                Spin the Wheel
-            </>
+          <>
+            <Play className="mr-2 h-4 w-4 fill-current" />
+            Spin the Wheel
+          </>
         )}
       </Button>
-      {result && !isSpinning && !isStopping && (
+
+      {result && !isSpinning && (
         <div className="mt-6 text-center bg-muted/50 p-4 rounded-lg shadow-md max-w-sm animate-in fade-in zoom-in-95">
           <Gift className="w-8 h-8 mx-auto text-primary mb-2" />
           <h3 className="font-headline text-lg font-semibold">Your happy task is:</h3>
