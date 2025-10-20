@@ -134,7 +134,7 @@ export default function SpinWheel() {
               >
                 <div
                   className="flex flex-col items-center justify-center text-center"
-                  style={{ transform: `rotate(${segmentAngle / 2}deg) translate(-50%, -70%) rotate(-90deg)` }}
+                  style={{ transform: `rotate(${segmentAngle / 2}deg) translate(-50%, -98%) rotate(-90deg)` }}
                 >
                   <Icon className="w-2.5 h-2.5 text-foreground/70" />
                 </div>
