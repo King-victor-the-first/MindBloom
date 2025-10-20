@@ -47,7 +47,7 @@ export default function SpinWheel() {
       const finalAngle = angle + (randomExtraSpins * 360) - (randomStopIndex * segmentAngle) - (segmentAngle / 2);
       
       wheelRef.current.classList.remove("animate-spin-continuous");
-      wheelRef.current.style.transition = 'transform 4s ease-out';
+      wheelRef.current.style.transition = 'transform 2.5s ease-out';
       wheelRef.current.style.transform = `rotate(${finalAngle}deg)`;
 
       setCurrentRotation(finalAngle);
@@ -57,7 +57,7 @@ export default function SpinWheel() {
       setTimeout(() => {
         setResult(wheelTasks[randomStopIndex].text);
         setIsStopping(false);
-      }, 4000); // Corresponds to the transition duration
+      }, 2500); // Corresponds to the transition duration
 
     } else {
       // --- Starting the wheel ---
