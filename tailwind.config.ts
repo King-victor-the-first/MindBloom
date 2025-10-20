@@ -69,6 +69,7 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       transitionDuration: {
+        '6000': '6000ms',
         '8000': '8000ms',
       },
       keyframes: {
