@@ -105,6 +105,14 @@ export default {
           '0%': { transform: 'rotate(0deg)' },
           '100%': { transform: 'rotate(360deg)' },
         },
+        'pulse-glow': {
+          '0%, 100%': {
+            boxShadow: '0 0 15px hsl(var(--primary) / 0.4)',
+          },
+          '50%': {
+            boxShadow: '0 0 25px 5px hsl(var(--primary) / 0.6)',
+          },
+        }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -113,6 +121,7 @@ export default {
         'siri-2': 'siri-2 1s ease-in-out infinite 0.2s',
         'siri-3': 'siri-3 1s ease-in-out infinite 0.4s',
         'spin-continuous': 'spin-continuous .5s linear infinite',
+        'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
       },
     },
   },

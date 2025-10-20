@@ -115,7 +115,7 @@ export default function SpinWheel() {
         <div
           ref={wheelRef}
           className={cn(
-            "relative w-full h-full rounded-full border-4 border-muted shadow-lg overflow-hidden shadow-primary/40 [box-shadow:0_0_20px_hsl(var(--primary))]"
+            "relative w-full h-full rounded-full border-4 border-muted shadow-lg overflow-hidden animate-pulse-glow"
           )}
         >
           {wheelTasks.map((task, index) => {
