@@ -66,7 +66,7 @@ export default function SpinWheel() {
 
         {/* Wheel */}
         <div
-          className="relative w-full h-full rounded-full border-4 border-muted shadow-lg overflow-hidden transition-transform duration-[8000ms] ease-out"
+          className="relative w-full h-full rounded-full border-4 border-muted shadow-lg overflow-hidden transition-transform duration-8000 ease-out"
           style={{ transform: `rotate(-${rotation}deg)` }}
         >
           {wheelTasks.map((task, index) => {
