@@ -22,7 +22,7 @@ export default function SpinWheel() {
   const [isSpinning, setIsSpinning] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  const [rotation, setRotation] = useState(0);
+  const [currentRotation, setCurrentRotation] = useState(0);
   const wheelRef = useRef<HTMLDivElement>(null);
 
   const handleToggleSpin = () => {
@@ -35,28 +35,37 @@ export default function SpinWheel() {
       const computedStyle = window.getComputedStyle(wheelRef.current);
       const transform = computedStyle.transform;
       
-      let currentAngle = 0;
+      let angle = currentRotation;
       if (transform !== 'none') {
         const matrix = new DOMMatrix(transform);
-        currentAngle = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
+        angle = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
       }
 
-      // Calculate a random final position ahead of the current angle
-      const randomExtraSpins = Math.floor(Math.random() * 2) + 2; // Spin 2-3 more times
+      const randomExtraSpins = Math.floor(Math.random() * 2) + 3; // Spin 3-4 more times for momentum
       const randomStopIndex = Math.floor(Math.random() * wheelTasks.length);
-      const finalAngle = (randomExtraSpins * 360) - (randomStopIndex * segmentAngle) - (segmentAngle / 2);
+      // Calculate the final angle to align the pointer with the middle of the chosen segment
+      const finalAngle = angle + (randomExtraSpins * 360) - (randomStopIndex * segmentAngle) - (segmentAngle / 2);
       
-      setRotation(currentAngle + finalAngle);
+      wheelRef.current.classList.remove("animate-spin-continuous");
+      wheelRef.current.style.transition = 'transform 4s ease-out';
+      wheelRef.current.style.transform = `rotate(${finalAngle}deg)`;
+
+      setCurrentRotation(finalAngle);
       setIsSpinning(false);
       setIsStopping(true);
 
       setTimeout(() => {
         setResult(wheelTasks[randomStopIndex].text);
         setIsStopping(false);
-      }, 4000); // Corresponds to the new transition duration
+      }, 4000); // Corresponds to the transition duration
 
     } else {
       // --- Starting the wheel ---
+      setResult(null);
+      if (wheelRef.current) {
+        wheelRef.current.style.transition = 'none'; // Remove transition before starting animation
+        wheelRef.current.classList.add("animate-spin-continuous");
+      }
       setIsSpinning(true);
       setIsStopping(false);
     }
@@ -95,11 +104,8 @@ export default function SpinWheel() {
         <div
           ref={wheelRef}
           className={cn(
-            "relative w-full h-full rounded-full border-4 border-muted shadow-lg overflow-hidden",
-            isSpinning && "animate-spin-continuous",
-            isStopping && "transition-transform duration-[4000ms] ease-out"
+            "relative w-full h-full rounded-full border-4 border-muted shadow-lg overflow-hidden"
           )}
-          style={isStopping ? { transform: `rotate(${rotation}deg)` } : {}}
         >
           {wheelTasks.map((task, index) => {
             const Icon = task.icon;
