@@ -49,7 +49,7 @@ export default function SpinWheel() {
     setTimeout(() => {
       setResult(wheelTasks[randomIndex].text);
       setIsSpinning(false);
-    }, 6000); // This duration should match the CSS transition duration
+    }, 8000); // This duration should match the CSS transition duration
   };
 
   return (
@@ -66,7 +66,7 @@ export default function SpinWheel() {
 
         {/* Wheel */}
         <div
-          className="relative w-full h-full rounded-full border-4 border-muted shadow-lg overflow-hidden transition-transform duration-[6000ms] ease-out"
+          className="relative w-full h-full rounded-full border-4 border-muted shadow-lg overflow-hidden transition-transform duration-[8000ms] ease-out"
           style={{ transform: `rotate(-${rotation}deg)` }}
         >
           {wheelTasks.map((task, index) => {
