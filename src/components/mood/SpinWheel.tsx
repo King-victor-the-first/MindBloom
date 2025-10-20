@@ -32,28 +32,34 @@ export default function SpinWheel() {
       // --- Stopping the wheel ---
       if (!wheelRef.current) return;
       
+      setIsSpinning(false);
+      setIsStopping(true);
+
       const computedStyle = window.getComputedStyle(wheelRef.current);
       const transform = computedStyle.transform;
       
-      let angle = currentRotation;
+      let currentAngle = 0;
       if (transform !== 'none') {
         const matrix = new DOMMatrix(transform);
-        angle = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
+        currentAngle = Math.round(Math.atan2(matrix.b, matrix.a) * (180 / Math.PI));
       }
 
       const randomExtraSpins = Math.floor(Math.random() * 2) + 3; // Spin 3-4 more times for momentum
       const randomStopIndex = Math.floor(Math.random() * wheelTasks.length);
-      // Calculate the final angle to align the pointer with the middle of the chosen segment
-      const finalAngle = angle + (randomExtraSpins * 360) - (randomStopIndex * segmentAngle) - (segmentAngle / 2);
+      const finalAngle = currentAngle + (randomExtraSpins * 360) - (currentAngle % 360) - (randomStopIndex * segmentAngle) - (segmentAngle / 2);
       
+      // Remove the animation class
       wheelRef.current.classList.remove("animate-spin-continuous");
+
+      // CRITICAL: Force browser reflow to apply the class removal before adding the transition.
+      void wheelRef.current.offsetWidth;
+
+      // Apply the transition for the slow-down effect.
       wheelRef.current.style.transition = 'transform 2.5s ease-out';
       wheelRef.current.style.transform = `rotate(${finalAngle}deg)`;
 
       setCurrentRotation(finalAngle);
-      setIsSpinning(false);
-      setIsStopping(true);
-
+      
       setTimeout(() => {
         setResult(wheelTasks[randomStopIndex].text);
         setIsStopping(false);
@@ -64,6 +70,11 @@ export default function SpinWheel() {
       setResult(null);
       if (wheelRef.current) {
         wheelRef.current.style.transition = 'none'; // Remove transition before starting animation
+        wheelRef.current.style.transform = `rotate(${currentRotation}deg)`; // Start from last position
+        
+        // CRITICAL: Force reflow before adding animation class
+        void wheelRef.current.offsetWidth;
+
         wheelRef.current.classList.add("animate-spin-continuous");
       }
       setIsSpinning(true);
