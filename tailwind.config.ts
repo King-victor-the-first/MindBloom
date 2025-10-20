@@ -100,6 +100,10 @@ export default {
             '0%, 100%': { transform: 'scaleY(0.8)' },
             '50%': { transform: 'scaleY(0.2)' },
         },
+        'spin-continuous': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -107,6 +111,7 @@ export default {
         'siri-1': 'siri-1 1s ease-in-out infinite',
         'siri-2': 'siri-2 1s ease-in-out infinite 0.2s',
         'siri-3': 'siri-3 1s ease-in-out infinite 0.4s',
+        'spin-continuous': 'spin-continuous 5s linear infinite',
       },
     },
   },
