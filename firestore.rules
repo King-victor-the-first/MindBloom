@@ -4,52 +4,46 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Rules for user profiles
-    match /userProfiles/{userId} {
-      // A user can create their own profile, and read/update it.
-      allow create: if request.auth != null;
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      
-      // Moderators can read any user's profile for administrative purposes.
-      allow get: if request.auth != null && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
-
-      // Allow moderators to delete users (but not themselves)
-      allow delete: if request.auth != null 
-                    && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true
-                    && request.auth.uid != userId;
-
-      // Rules for mood entries subcollection
-      match /moodEntries/{entryId} {
-        // A user can create and read their own mood entries.
-        allow read, create, update: if request.auth != null && request.auth.uid == userId;
-      }
-      
-      // Rules for gratitude journal subcollection
-      match /gratitudeJournal/{journalId} {
-          // A user can read and write their own journal entries.
-          allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Rules for safety plan subcollection
-      match /safetyPlan/userPlan {
-          // A user can read and write their own safety plan.
-          allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
-    // Rules for the group chat
+    // User Profiles
+    // - Allow users to create their own profile.
+    // - Allow authenticated users to read and update their own profile.
+    match /userProfiles/{userId} {
+      allow create: if request.auth.uid == userId;
+      allow read, update: if isOwner(userId);
+    }
+
+    // Mood Entries
+    // - Allow users to create, read, and update their own mood entries.
+    match /userProfiles/{userId}/moodEntries/{entryId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Gratitude Journal
+    // - Allow users to create, read, and update their own journal entries.
+    match /userProfiles/{userId}/gratitudeJournal/{journalId} {
+        allow read, write: if isOwner(userId);
+    }
+
+    // Safety Plan
+    // - Allow users to create, read, and update their own safety plan.
+    match /userProfiles/{userId}/safetyPlan/{planId} {
+        allow read, write: if isOwner(userId);
+    }
+
+    // Group Chat Messages
+    // - Allow any authenticated user to read all messages.
+    // - Allow authenticated users to create messages.
+    // - Allow users to update (soft-delete) only their own messages.
     match /groupChatMessages/{messageId} {
-      // Any authenticated user can read the chat messages.
-      allow read: if request.auth != null;
-      
-      // An authenticated user can create a message for themselves.
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      
-      // A user can 'delete' (update) their own message. Moderators can delete any message.
-      allow update: if request.auth != null && (
-        (resource.data.userId == request.auth.uid) || 
-        (get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true)
-      );
+      allow read, create: if request.auth != null;
+      allow update: if isOwner(resource.data.userId);
+      // Disallow direct deletion for all users.
+      allow delete: if false;
     }
   }
 }
