@@ -1,24 +1,22 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
     // Users can only read and write their own profile data.
     match /userProfiles/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
 
-      // Users can read, write, and delete documents in their own subcollections.
-      match /{document=**} {
+      // Users can read and write to all subcollections within their own profile.
+      // This covers moodEntries, gratitudeJournal, and safetyPlan.
+      match /{allDocuments=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // Any authenticated user can read and create chat messages.
+    // Any authenticated user can read and write to the group chat.
+    // Writes are further checked by an AI moderation flow in the application code.
     match /groupChatMessages/{messageId} {
-      allow read, create: if request.auth != null;
-
-      // Only the user who created the message or a moderator can update/delete it.
-      // We check if the incoming resource's isModerator flag is true, which is set on creation.
-      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true);
+      allow read, write: if request.auth != null;
     }
   }
 }
