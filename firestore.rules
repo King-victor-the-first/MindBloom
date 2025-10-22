@@ -1,49 +1,45 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check ownership
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
     // User Profiles
-    // - Allow users to create their own profile.
-    // - Allow authenticated users to read and update their own profile.
+    // - Users can create their own profile.
+    // - Users can read their own profile.
+    // - Authenticated users can read other profiles (for features like chat display names).
+    // - Users can update their own profile.
+    // - Users can delete their own profile.
     match /userProfiles/{userId} {
-      allow create: if request.auth.uid == userId;
-      allow read, update: if isOwner(userId);
-    }
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow get: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == userId;
 
-    // Mood Entries
-    // - Allow users to create, read, and update their own mood entries.
-    match /userProfiles/{userId}/moodEntries/{entryId} {
-      allow read, write: if isOwner(userId);
-    }
-    
-    // Gratitude Journal
-    // - Allow users to create, read, and update their own journal entries.
-    match /userProfiles/{userId}/gratitudeJournal/{journalId} {
-        allow read, write: if isOwner(userId);
-    }
+      // Mood Entries Subcollection
+      // - Users can create, read, update, and delete their own mood entries.
+      match /moodEntries/{entryId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Gratitude Journal Subcollection
+      // - Users can create, read, update, and delete their own gratitude entries.
+      match /gratitudeJournal/{journalId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
 
-    // Safety Plan
-    // - Allow users to create, read, and update their own safety plan.
-    match /userProfiles/{userId}/safetyPlan/{planId} {
-        allow read, write: if isOwner(userId);
+      // Safety Plan Subcollection
+      // - Users can create, read, and update their own safety plan.
+      match /safetyPlan/{planId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
     // Group Chat Messages
-    // - Allow any authenticated user to read all messages.
-    // - Allow authenticated users to create messages.
-    // - Allow users to update (soft-delete) only their own messages.
+    // - Any authenticated user can read all messages.
+    // - Any authenticated user can create a message.
+    // - Users can only update/delete their own messages.
     match /groupChatMessages/{messageId} {
       allow read, create: if request.auth != null;
-      allow update: if isOwner(resource.data.userId);
-      // Disallow direct deletion for all users.
-      allow delete: if false;
+      allow update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
   }
 }
