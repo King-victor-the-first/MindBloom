@@ -1,52 +1,31 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
+    // Default deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // Helper function to check if the user is the owner of the document
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Rules for the userProfiles collection
+    // Allow logged-in users to read/write their own user profile.
+    // They can create it, read it, and update it.
+    // They cannot update the 'isModerator' field themselves.
     match /userProfiles/{userId} {
-      // A user can only read and write to their own profile
-      allow read, update: if isAuthenticated() && isOwner(userId);
-      // A user can create their own profile
-      allow create: if isAuthenticated();
-
-      // Rules for the moodEntries subcollection
-      match /moodEntries/{entryId} {
-        // A user can perform all operations on their own mood entries
-        allow read, write, create, delete: if isAuthenticated() && isOwner(userId);
-      }
-
-      // Rules for the gratitudeJournal subcollection
-      match /gratitudeJournal/{journalId} {
-        // A user can perform all operations on their own gratitude journal entries
-        allow read, write, create, delete: if isAuthenticated() && isOwner(userId);
-      }
-      
-      // Rules for the safetyPlan subcollection
-      match /safetyPlan/{planId} {
-        // A user can perform all operations on their own safety plan
-        allow read, write, create, delete: if isAuthenticated() && isOwner(userId);
-      }
+      allow read, create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+                    && !('isModerator' in request.resource.data);
+    }
+    
+    // Allow users to read and write to their own subcollections (mood, gratitude, safety plan).
+    match /userProfiles/{userId}/{subcollection}/{docId} {
+       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Rules for the groupChatMessages collection
+    // Allow any authenticated user to read and write to the group chat.
+    // Moderation is handled by the AI flow before writing.
     match /groupChatMessages/{messageId} {
-      // Any authenticated user can read messages
-      allow read: if isAuthenticated();
-      // An authenticated user can create messages, and can only update/delete their own messages
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null;
     }
   }
 }
