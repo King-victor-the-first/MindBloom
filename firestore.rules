@@ -3,55 +3,28 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if the user is the owner of the document.
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    // Helper function to check if the user is a moderator.
-    function isModerator() {
-      return request.auth != null && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
-    }
-
-    // Rules for the userProfiles collection.
+    
+    // User Profiles
+    // - Users can create their own profile.
+    // - Users can only read or update their own profile.
     match /userProfiles/{userId} {
-      // Users can create their own profile.
-      allow create: if isOwner(userId);
-      // Users can read and update their own profile. Moderators can read any profile.
-      allow get, update: if isOwner(userId) || isModerator();
-      // Only moderators can list all user profiles (for the admin dashboard).
-      allow list: if isModerator();
-      // Users cannot delete their profiles through the app.
-      allow delete: if false;
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
 
-      // Rules for the moodEntries subcollection.
-      match /moodEntries/{entryId} {
-        // Users can create, read, update, and list their own mood entries.
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rules for the gratitudeJournal subcollection.
-      match /gratitudeJournal/{journalId} {
-        // Users can create, read, and update their own journal entries.
-        allow read, write: if isOwner(userId);
-      }
-      
-      // Rules for the safetyPlan subcollection.
-      match /safetyPlan/{planId} {
-        // Users can create, read, and update their own safety plan.
-        allow read, write: if isOwner(userId);
+      // User Subcollections (Gratitude, Mood, Safety Plan)
+      // - Users can read and write to any document in any subcollection under their own profile.
+      match /{allSubcollections}/{docId} {
+        allow read, write: if request.auth.uid == userId;
       }
     }
 
-    // Rules for the groupChatMessages collection.
+    // Group Chat Messages
+    // - Any authenticated user can read all messages.
+    // - Any authenticated user can create a message.
+    // - Only the original author can update their own message (for deletion).
     match /groupChatMessages/{messageId} {
-      // Any authenticated user can read and create messages.
-      allow read, create: if request.auth != null;
-      // Only the message owner or a moderator can update (soft delete) a message.
-      allow update: if (isOwner(resource.data.userId) && request.resource.data.isDeleted == true) || isModerator();
-      // Deletion is not allowed, use soft delete via update.
-      allow delete: if false;
+      allow read, create: if request.auth.uid != null;
+      allow update: if request.auth.uid == resource.data.userId;
     }
   }
 }
