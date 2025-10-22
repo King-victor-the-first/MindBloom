@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -25,20 +26,21 @@ export default function GratitudeJournal() {
   const [entryText, setEntryText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser(); // <-- Destructure isUserLoading
   const firestore = useFirestore();
   
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
   const entryRef = useMemoFirebase(() => {
-    if (!user) return null;
+    // Crucially, wait for user loading to be false AND user to exist
+    if (isUserLoading || !user) return null;
     return doc(firestore, `userProfiles/${user.uid}/gratitudeJournal`, todayStr);
-  }, [user, firestore, todayStr]);
+  }, [user, isUserLoading, firestore, todayStr]);
 
-  const { data: todayEntry, isLoading } = useDoc<GratitudeEntry>(entryRef);
+  const { data: todayEntry, isLoading: isEntryLoading } = useDoc<GratitudeEntry>(entryRef);
 
   const handleSaveEntry = async () => {
-    if (!entryText.trim() || !user) return;
+    if (!entryText.trim() || !user || !entryRef) return; // Add check for entryRef
     setIsSaving(true);
     try {
       const newEntry = {
@@ -46,7 +48,7 @@ export default function GratitudeJournal() {
         entry: entryText,
         createdAt: serverTimestamp(),
       };
-      await setDoc(entryRef!, newEntry);
+      await setDoc(entryRef, newEntry);
       toast({
         title: "Gratitude Logged",
         description: "Your entry has been saved for today.",
@@ -65,7 +67,8 @@ export default function GratitudeJournal() {
     }
   };
 
-  if (isLoading) {
+  // Combine auth loading and doc loading states
+  if (isUserLoading || isEntryLoading) {
     return (
         <Card>
             <CardContent className="pt-6 flex items-center justify-center h-24">
