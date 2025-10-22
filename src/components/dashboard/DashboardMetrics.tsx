@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Smile, Bed, BrainCircuit } from "lucide-react";
+import { Footprints, Smile, Bed } from "lucide-react";
 
 const metrics = [
   {
@@ -15,9 +15,9 @@ const metrics = [
     color: "text-blue-500",
   },
   {
-    title: "Stress",
-    value: "Low",
-    icon: BrainCircuit,
+    title: "Steps Today",
+    value: "8,204",
+    icon: Footprints,
     color: "text-yellow-500",
   },
 ];

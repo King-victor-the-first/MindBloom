@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Smile, ClipboardList, Bot, Settings } from 'lucide-react';
+import { Home, Smile, ClipboardList, Bot, Settings, LineChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SiriWave from './SiriWave';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -12,7 +12,7 @@ const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/mood', label: 'Mood', icon: Smile },
   { href: '/therapy', label: 'Therapy', icon: 'siri' },
-  { href: '/activities', label: 'Journal', icon: ClipboardList },
+  { href: '/insights', label: 'Insights', icon: LineChart },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

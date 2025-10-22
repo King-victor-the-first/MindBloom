@@ -43,9 +43,72 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the mood was logged."
+        },
+        "trigger": {
+            "type": "string",
+            "description": "The primary reason for the mood (e.g., Academics, Social)."
+        },
+        "triggerNote": {
+            "type": "string",
+            "description": "A user-written note for additional context on the trigger."
         }
       },
       "required": ["mood", "value", "createdAt"]
+    },
+    "GratitudeEntry": {
+      "title": "Gratitude Journal Entry",
+      "description": "A single entry in a user's gratitude journal.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "The date of the entry in YYYY-MM-DD format."
+        },
+        "entry": {
+          "type": "string",
+          "description": "The text content of the gratitude entry."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the entry was created."
+        }
+      },
+      "required": ["date", "entry", "createdAt"]
+    },
+    "SafetyPlan": {
+        "title": "User Safety Plan",
+        "description": "Stores a user's personalized safety plan for moments of crisis.",
+        "type": "object",
+        "properties": {
+            "trustedContacts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "phone": {"type": "string"}
+                    },
+                    "required": ["name", "phone"]
+                }
+            },
+            "emergencyResources": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "phone": {"type": "string"}
+                    },
+                     "required": ["name", "phone"]
+                }
+            },
+            "copingStrategies": {
+                "type": "string",
+                "description": "A user-written text of personal coping strategies."
+            }
+        }
     },
     "ChatMessage": {
       "title": "Chat Message",
@@ -123,6 +186,18 @@
             "$ref": "#/entities/MoodEntry"
         },
         "description": "Stores a user's mood entries over time."
+    },
+    "/userProfiles/{userId}/gratitudeJournal/{YYYY-MM-DD}": {
+        "schema": {
+            "$ref": "#/entities/GratitudeEntry"
+        },
+        "description": "Stores a user's daily gratitude journal entries."
+    },
+    "/userProfiles/{userId}/safetyPlan/userPlan": {
+        "schema": {
+            "$ref": "#/entities/SafetyPlan"
+        },
+        "description": "A single document containing the user's safety plan."
     },
     "/groupChatMessages/{messageId}": {
       "schema": {

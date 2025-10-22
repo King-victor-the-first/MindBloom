@@ -2,6 +2,8 @@ import WelcomeHeader from "@/components/dashboard/WelcomeHeader";
 import DashboardMetrics from "@/components/dashboard/DashboardMetrics";
 import ScheduledSessions from "@/components/dashboard/ScheduledSessions";
 import MedicationReminders from "@/components/dashboard/MedicationReminders";
+import GratitudeJournal from "@/components/dashboard/GratitudeJournal";
+import { Separator } from "@/components/ui/separator";
 
 export default function DashboardPage() {
   return (
@@ -9,6 +11,8 @@ export default function DashboardPage() {
       <div className="space-y-8">
         <WelcomeHeader />
         <DashboardMetrics />
+        <Separator />
+        <GratitudeJournal />
         <ScheduledSessions />
         <MedicationReminders />
       </div>

@@ -55,4 +55,31 @@ export interface MoodEntry {
     mood: "Awful" | "Bad" | "Okay" | "Good" | "Great";
     value: number;
     createdAt: any; // Firestore Timestamp
+    trigger?: string;
+    triggerNote?: string;
+}
+
+export interface GratitudeEntry {
+  id: string;
+  date: string;
+  entry: string;
+  createdAt: any;
+}
+
+export interface SafetyPlanContact {
+    id: string;
+    name: string;
+    phone: string;
+}
+
+export interface SafetyPlanResource {
+    id: string;
+    name: string;
+    phone: string;
+}
+
+export interface SafetyPlan {
+    trustedContacts: SafetyPlanContact[];
+    emergencyResources: SafetyPlanResource[];
+    copingStrategies: string;
 }

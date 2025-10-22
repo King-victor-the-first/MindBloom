@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, PlayCircle } from "lucide-react";
+import { Loader2, PlayCircle, ShieldCheck } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -214,6 +215,21 @@ export default function SettingsForm() {
             <Separator />
 
             <div className="space-y-4">
+              <h3 className="text-lg font-medium">Crisis & Safety Settings</h3>
+                <Link href="/settings/safety-plan" passHref>
+                    <Button variant="outline">
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        Manage My Safety Plan
+                    </Button>
+                </Link>
+                <FormDescription>
+                    Configure your trusted contacts and coping strategies for crisis situations.
+                </FormDescription>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
                 <h3 className="text-lg font-medium">AI Voice Settings</h3>
                  <FormField
                   control={form.control}
@@ -271,5 +287,3 @@ export default function SettingsForm() {
     </Card>
   );
 }
-
-    
