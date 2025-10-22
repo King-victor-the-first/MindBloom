@@ -10,12 +10,15 @@ import { doc } from "firebase/firestore";
 import type { SafetyPlan } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, User, LifeBuoy, ShieldCheck, PlusCircle } from "lucide-react";
 import { Separator } from "../ui/separator";
+
+// These variables are expected to be globally available in the Firebase Hosting environment.
+declare var __app_id: string | undefined;
 
 const contactSchema = z.object({
   id: z.string(),
@@ -42,7 +45,9 @@ export default function SafetyPlanForm() {
   
   const safetyPlanRef = useMemoFirebase(() => {
     if (!user) return null;
-    return doc(firestore, `userProfiles/${user.uid}/safetyPlan/userPlan`);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const docPath = `artifacts/${appId}/users/${user.uid}/safetyPlan/userPlan`;
+    return doc(firestore, docPath);
   }, [user, firestore]);
   
   const { data: safetyPlan, isLoading: isPlanLoading } = useDoc<SafetyPlan>(safetyPlanRef);
@@ -209,3 +214,5 @@ export default function SafetyPlanForm() {
     </Card>
   );
 }
+
+    
