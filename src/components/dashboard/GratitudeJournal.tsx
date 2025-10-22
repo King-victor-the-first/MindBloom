@@ -31,13 +31,10 @@ export default function GratitudeJournal() {
   
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
-  // CRITICAL FIX: The useMemoFirebase hook now depends on `user`.
-  // This ensures the document reference (`entryRef`) is only created *after* `user` is available.
-  // If `user` is null, `entryRef` will be null, and `useDoc` will wait, preventing the permission error.
   const entryRef = useMemoFirebase(() => {
-    if (!user) return null; // Wait until user object is available
+    if (!user) return null; // CRITICAL: Wait until user object is available
     return doc(firestore, `userProfiles/${user.uid}/gratitudeJournal`, todayStr);
-  }, [user, firestore, todayStr]);
+  }, [user, firestore, todayStr]); // Dependency on `user` is key
 
   const { data: todayEntry, isLoading: isEntryLoading } = useDoc<GratitudeEntry>(entryRef);
 
@@ -73,6 +70,12 @@ export default function GratitudeJournal() {
   if (isUserLoading || (user && isEntryLoading)) {
     return (
         <Card>
+             <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    <PenSquare className="w-5 h-5" />
+                    Today's Gratitude
+                </CardTitle>
+            </CardHeader>
             <CardContent className="pt-6 flex items-center justify-center h-24">
                 <Loader2 className="w-6 h-6 animate-spin text-primary"/>
             </CardContent>
