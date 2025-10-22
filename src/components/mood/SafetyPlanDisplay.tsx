@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -104,7 +105,7 @@ export default function SafetyPlanDisplay({ onDone }: SafetyPlanDisplayProps) {
                 <CardTitle className="flex items-center gap-2 text-lg">
                     <ShieldCheck className="w-5 h-5"/>
                     My Coping Strategies
-                CardTitle>
+                </CardTitle>
             </CardHeader>
             <CardContent>
                 {safetyPlan?.copingStrategies ? (
