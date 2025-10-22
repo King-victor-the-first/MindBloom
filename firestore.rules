@@ -2,18 +2,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows a user to read/write *anything* inside their own folder
-    // The {document=**} part is critical. It means "this folder and all subfolders"
-    match /artifacts/{appId}/users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // This rule is for user profiles, which might still be in use.
+    // THIS IS THE RULE YOU NEED:
+    // It matches a user's folder and ALL sub-folders and documents inside it.
     match /userProfiles/{userId}/{document=**} {
+      // Allow access ONLY if the user is logged in
+      // AND their auth ID matches the folder ID.
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // This rule allows any authenticated user to read/write the public chat
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+      // Allow access ONLY if the user is logged in
+      // AND their auth ID matches the folder ID.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // This rule is for your public community chat
     match /groupChatMessages/{document=**} {
       allow read, write: if request.auth != null;
     }
