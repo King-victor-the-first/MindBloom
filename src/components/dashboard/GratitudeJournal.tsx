@@ -26,21 +26,23 @@ export default function GratitudeJournal() {
   const [entryText, setEntryText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser(); // <-- Destructure isUserLoading
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   
   const todayStr = format(new Date(), "yyyy-MM-dd");
 
+  // CRITICAL FIX: The useMemoFirebase hook now depends on `user`.
+  // This ensures the document reference (`entryRef`) is only created *after* `user` is available.
+  // If `user` is null, `entryRef` will be null, and `useDoc` will wait, preventing the permission error.
   const entryRef = useMemoFirebase(() => {
-    // Crucially, wait for user loading to be false AND user to exist
-    if (isUserLoading || !user) return null;
+    if (!user) return null; // Wait until user object is available
     return doc(firestore, `userProfiles/${user.uid}/gratitudeJournal`, todayStr);
-  }, [user, isUserLoading, firestore, todayStr]);
+  }, [user, firestore, todayStr]);
 
   const { data: todayEntry, isLoading: isEntryLoading } = useDoc<GratitudeEntry>(entryRef);
 
   const handleSaveEntry = async () => {
-    if (!entryText.trim() || !user || !entryRef) return; // Add check for entryRef
+    if (!entryText.trim() || !user || !entryRef) return;
     setIsSaving(true);
     try {
       const newEntry = {
@@ -67,8 +69,8 @@ export default function GratitudeJournal() {
     }
   };
 
-  // Combine auth loading and doc loading states
-  if (isUserLoading || isEntryLoading) {
+  // Combine auth loading and doc loading states for a seamless loading experience.
+  if (isUserLoading || (user && isEntryLoading)) {
     return (
         <Card>
             <CardContent className="pt-6 flex items-center justify-center h-24">
