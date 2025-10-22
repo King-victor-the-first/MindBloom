@@ -1,14 +1,20 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow users to read and write their own profile data, including all subcollections.
+    // Grant users access to their own profile data, including all subcollections.
     match /userProfiles/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Allow any authenticated user to read and write to the group chat.
-    // Moderation is handled by a cloud function, not just security rules.
+    // Grant users access to their own artifact data (like the safety plan).
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow any authenticated user to read and write messages in the group chat.
     match /groupChatMessages/{messageId} {
       allow read, write: if request.auth != null;
     }
