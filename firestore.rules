@@ -1,55 +1,29 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is the owner of the profile
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    // Helper function to check if the user is a logged-in user
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Rules for user profiles
+    // Users can read/update their own profile, and create it.
     match /userProfiles/{userId} {
-      // A user can read and update their own profile.
-      // A user can create their own profile document.
-      allow read, update, create: if isOwner(userId);
-      // Allow moderators to read user profiles for admin purposes.
-      allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
-      // Allow deletion only by the super admin for safety.
-      allow delete: if request.auth.uid == 'BzsBHchaPEYuHwuhqlMiwRaMbBJ2';
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth != null;
 
-      // Rules for mood entries subcollection
+      // Users can read and write to their own mood, gratitude, and safety plan subcollections.
       match /moodEntries/{entryId} {
-        // A user can read and write (create, update) their own mood entries.
-        allow read, write: if isOwner(userId);
+        allow read, write: if request.auth.uid == userId;
       }
-      
-      // Rules for gratitude journal subcollection
       match /gratitudeJournal/{journalId} {
-          // A user can read and write their own journal entries.
-          allow read, write: if isOwner(userId);
+        allow read, write: if request.auth.uid == userId;
       }
-      
-      // Rules for safety plan subcollection
       match /safetyPlan/{planId} {
-        // A user can read and write their own safety plan.
-        allow read, write: if isOwner(userId);
+        allow read, write: if request.auth.uid == userId;
       }
     }
 
-    // Rules for the peer-to-peer group chat
+    // Any authenticated user can read and create chat messages.
+    // Users can only update/delete their own messages.
     match /groupChatMessages/{messageId} {
-      // Any authenticated user can read all messages in the group chat.
-      allow read: if isSignedIn();
-      // Any authenticated user can create a message.
-      allow create: if isSignedIn();
-      // Only the user who created the message can update it (e.g., for soft deletion).
-      allow update: if isOwner(request.resource.data.userId);
+      allow read, create: if request.auth != null;
+      allow update, delete: if request.auth.uid == resource.data.userId;
     }
   }
 }
