@@ -1,34 +1,52 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // User profile data is readable by anyone, but only the user can write to their own profile.
+
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Rules for the userProfiles collection
     match /userProfiles/{userId} {
-      allow read;
-      allow write: if request.auth.uid == userId;
+      // A user can only read and write to their own profile
+      allow read, update: if isAuthenticated() && isOwner(userId);
+      // A user can create their own profile
+      allow create: if isAuthenticated();
 
-      // Users can only read and write to their own mood, gratitude, and safety plan subcollections.
+      // Rules for the moodEntries subcollection
       match /moodEntries/{entryId} {
-        allow read, write: if request.auth.uid == userId;
+        // A user can perform all operations on their own mood entries
+        allow read, write, create, delete: if isAuthenticated() && isOwner(userId);
       }
 
-      match /gratitudeJournal/{entryDate} {
-        allow read, write: if request.auth.uid == userId;
+      // Rules for the gratitudeJournal subcollection
+      match /gratitudeJournal/{journalId} {
+        // A user can perform all operations on their own gratitude journal entries
+        allow read, write, create, delete: if isAuthenticated() && isOwner(userId);
       }
-
-      match /safetyPlan/userPlan {
-         allow read, write: if request.auth.uid == userId;
+      
+      // Rules for the safetyPlan subcollection
+      match /safetyPlan/{planId} {
+        // A user can perform all operations on their own safety plan
+        allow read, write, create, delete: if isAuthenticated() && isOwner(userId);
       }
     }
 
-    // Chat messages can be read by any authenticated user, but only created by them.
-    // Users can only update their own messages (for deletion).
+    // Rules for the groupChatMessages collection
     match /groupChatMessages/{messageId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow delete: if false; // Disallow hard deletes
+      // Any authenticated user can read messages
+      allow read: if isAuthenticated();
+      // An authenticated user can create messages, and can only update/delete their own messages
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
   }
 }
