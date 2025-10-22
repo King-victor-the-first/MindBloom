@@ -1,44 +1,49 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Function to check if a user is an authenticated user.
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    // Function to check if the requesting user is the owner of the document.
+
+    // Helper function to check if the user is the owner of the data
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // Rules for userProfiles collection
+    // Rules for user profiles
     match /userProfiles/{userId} {
-      // Any authenticated user can create their own profile.
-      allow create: if isOwner(userId);
-      // Only the owner can get or update their own profile.
-      allow get, update: if isOwner(userId);
-      // Reads for all user profiles are restricted. Add admin/moderator logic here if needed.
-      allow read: if isSignedIn(); // Broadened for admin dashboard functionality
+      // Users can read and update their own profile
+      allow read, update: if isOwner(userId);
+      // Deny creating or deleting profiles directly via client
+      allow create, delete: if false;
+
+      // Rules for Mood Entries subcollection
+      match /moodEntries/{entryId} {
+        // Users can read and write (create, update) their own mood entries
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Rules for Gratitude Journal subcollection
+      match /gratitudeJournal/{entryDate} {
+         // Users can read and write their own gratitude entries
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for Safety Plan subcollection
+      match /safetyPlan/{planId} {
+        // Users can read and write their own safety plan
+        allow read, write: if isOwner(userId);
+      }
     }
 
-    // Rules for subcollections within userProfiles
-    match /userProfiles/{userId}/{collection}/{docId} {
-      // Allow the owner of the profile to read, write, create, and delete documents 
-      // in their own subcollections (moodEntries, gratitudeJournal, safetyPlan).
-      allow read, write, create, delete: if isOwner(userId);
-    }
-    
-    // Rules for groupChatMessages collection
+    // Rules for Group Chat
     match /groupChatMessages/{messageId} {
-      // Any signed-in user can read messages.
-      allow read: if isSignedIn();
-      // A user can create a message if they are signed in.
-      allow create: if isSignedIn();
-      // A user can update (soft-delete) their own message.
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
-      // Deletion of chat messages is not allowed.
+      // Any authenticated user can read chat messages
+      allow read: if request.auth != null;
+      // Any authenticated user can create a message
+      allow create: if request.auth != null;
+      // Only the user who created the message can "delete" it (soft delete via update)
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Disallow hard deletes from the client
       allow delete: if false;
     }
   }
