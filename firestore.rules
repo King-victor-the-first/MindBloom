@@ -1,44 +1,37 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is the owner of the profile
+    // Helper function to check if a user is the owner of a profile
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    // User Profiles: Users can read/write their own profile.
+    // userProfiles: Users can read/write their own profile.
     match /userProfiles/{userId} {
       allow read, update, delete: if isOwner(userId);
-      allow create: if request.auth.uid != null;
+      allow create: if request.auth != null;
+
+      // moodEntries: Only the profile owner can manage their mood entries.
+      match /moodEntries/{entryId} {
+        allow read, write, create, delete: if isOwner(userId);
+      }
+
+      // gratitudeJournal: Only the profile owner can manage their gratitude entries.
+      match /gratitudeJournal/{journalId} {
+        allow read, write, create, delete: if isOwner(userId);
+      }
+      
+      // safetyPlan: Only the profile owner can manage their safety plan.
+      match /safetyPlan/{planId} {
+        allow read, write, create, delete: if isOwner(userId);
+      }
     }
 
-    // Gratitude Journal: Users can read/write their own entries.
-    match /userProfiles/{userId}/gratitudeJournal/{entryDate} {
-      allow read, write: if isOwner(userId);
-    }
-
-    // Mood Entries: Users can read/write their own entries.
-    match /userProfiles/{userId}/moodEntries/{entryId} {
-      allow read, write: if isOwner(userId);
-    }
-    
-    // Safety Plan: Users can read/write their own safety plan.
-    match /userProfiles/{userId}/safetyPlan/userPlan {
-        allow read, write: if isOwner(userId);
-    }
-
-    // Group Chat Messages: Any authenticated user can read.
-    // Users can only create messages.
-    // Users can only update their own messages (for soft delete).
-    // Deletion is disallowed to preserve chat history (soft delete is used instead).
+    // groupChatMessages: Any authenticated user can read and write messages.
     match /groupChatMessages/{messageId} {
-      allow read: if request.auth.uid != null;
-      allow create: if request.auth.uid != null;
-      allow update: if request.auth.uid == resource.data.userId;
-      allow delete: if false; 
+      allow read, write: if request.auth != null;
     }
   }
 }
