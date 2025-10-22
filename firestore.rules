@@ -1,30 +1,32 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Allow logged-in users to read/write their own user profile.
-    // They can create it, read it, and update it.
-    // They cannot update the 'isModerator' field themselves.
+    // Rules for user-specific data
     match /userProfiles/{userId} {
-      allow read, create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId
-                    && !('isModerator' in request.resource.data);
-    }
-    
-    // Allow users to read and write to their own subcollections (mood, gratitude, safety plan).
-    match /userProfiles/{userId}/{subcollection}/{docId} {
-       allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Users can read and write to their own profile document.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Rules for moodEntries subcollection
+      match /moodEntries/{entryId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Rules for gratitudeJournal subcollection
+      match /gratitudeJournal/{journalId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Rules for the single safetyPlan document
+      match /safetyPlan/userPlan {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
-    // Allow any authenticated user to read and write to the group chat.
-    // Moderation is handled by the AI flow before writing.
+    // Rules for public group chat
     match /groupChatMessages/{messageId} {
+      // Any authenticated user can read and write to the chat.
+      // Additional moderation can be handled by Cloud Functions or client-side checks.
       allow read, write: if request.auth != null;
     }
   }
