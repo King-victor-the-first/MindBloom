@@ -2,72 +2,18 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is authenticated.
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to check if the requesting user is the owner of the document.
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
     
-    // Helper function to check if the requesting user is a moderator.
-    function isModerator() {
-        return exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) && 
-               get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+    // Users can read and write their own profile data.
+    // This also covers all subcollections like moodEntries, gratitudeJournal, and safetyPlan.
+    match /userProfiles/{userId}/{documents=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Rules for userProfiles collection
-    match /userProfiles/{userId} {
-      // Any authenticated user can create their own profile.
-      allow create: if isAuthenticated() && isOwner(userId);
-      
-      // Only the owner or a moderator can read a user profile.
-      allow get: if isAuthenticated() && (isOwner(userId) || isModerator());
-      
-      // Allow moderators to list all users for the admin dashboard.
-      allow list: if isAuthenticated() && isModerator();
-      
-      // Only the owner can update their profile. Moderators can also update profiles.
-      allow update: if isAuthenticated() && (isOwner(userId) || isModerator());
-      
-      // Only moderators can delete users (except themselves if they are not the super admin).
-      allow delete: if isAuthenticated() && isModerator();
-
-      // Rules for moodEntries subcollection
-      match /moodEntries/{entryId} {
-        // A user can create, read, update, and delete their own mood entries.
-        allow read, write: if isAuthenticated() && isOwner(userId);
-      }
-      
-      // Rules for gratitudeJournal subcollection
-      match /gratitudeJournal/{journalId} {
-          // A user can create, read, update, and delete their own gratitude journal entries.
-          allow read, write: if isAuthenticated() && isOwner(userId);
-      }
-      
-      // Rules for safetyPlan subcollection
-      match /safetyPlan/{planId} {
-          // A user can create, read, update, and delete their own safety plan.
-          allow read, write: if isAuthenticated() && isOwner(userId);
-      }
-    }
-    
-    // Rules for groupChatMessages collection
+    // Any authenticated user can read and create messages in the group chat.
+    // Users can only update or delete their own messages.
     match /groupChatMessages/{messageId} {
-        // Any authenticated user can read all messages.
-        allow read: if isAuthenticated();
-
-        // An authenticated user can create a message.
-        allow create: if isAuthenticated();
-
-        // A user can update (soft delete) their own message, or a moderator can.
-        allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isModerator());
-        
-        // Deletion of messages is not allowed through this rule. Updates are used for soft deletes.
-        allow delete: if false;
+      allow read, create: if request.auth != null;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
   }
 }
