@@ -1,54 +1,63 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is the owner of the document
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    // Helper function to check if the user is authenticated
-    function isSignedIn() {
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Rules for the userProfiles collection
-    match /userProfiles/{userId} {
-      // A user can create their own profile.
-      // Anyone can read a user profile (e.g., for names in chat), but only the owner can write/update.
-      allow read: if isSignedIn();
-      allow create, update, delete: if isOwner(userId);
-
-      // Rules for the moodEntries subcollection
-      match /moodEntries/{entryId} {
-        // Only the owner of the user profile can manage their mood entries.
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rules for the gratitudeJournal subcollection
-      match /gratitudeJournal/{journalId} {
-        // Only the owner of the user profile can manage their gratitude entries.
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rules for the safetyPlan subcollection
-      match /safetyPlan/{planId} {
-        // Only the owner of the user profile can manage their safety plan.
-        allow read, write: if isOwner(userId);
-      }
+    // Helper function to check if the requesting user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Helper function to check if the user is a moderator
+    function isModerator() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
     }
 
-    // Rules for the groupChatMessages collection
+    // User Profiles
+    match /userProfiles/{userId} {
+      // Users can create their own profile
+      allow create: if isAuthenticated() && isOwner(userId);
+      // Users can read their own profile. Moderators can read any profile.
+      allow get: if isAuthenticated() && (isOwner(userId) || isModerator());
+      // Users can update their own profile
+      allow update: if isAuthenticated() && isOwner(userId);
+      // Only moderators can delete users (for now, this can be tightened)
+      allow delete: if isAuthenticated() && isModerator();
+    }
+
+    // Mood Entries subcollection
+    match /userProfiles/{userId}/moodEntries/{entryId} {
+      // Users can read and write to their own mood entries subcollection
+      allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Gratitude Journal subcollection
+    match /userProfiles/{userId}/gratitudeJournal/{journalId} {
+        // Users can read and write to their own gratitude journal
+        allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Safety Plan subcollection
+    match /userProfiles/{userId}/safetyPlan/{planId} {
+        // Users can read and write their own safety plan
+        allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+
+    // Group Chat Messages
     match /groupChatMessages/{messageId} {
-      // Any authenticated user can read chat messages.
-      allow read: if isSignedIn();
-      // An authenticated user can create a message.
-      allow create: if isSignedIn()
-                    && request.resource.data.userId == request.auth.uid; // Ensure they are the author
-      // A user can only update their own message (for deletion)
-      allow update: if isOwner(resource.data.userId);
-      // Deletion of chat messages is not allowed directly. They should be updated with an `isDeleted` flag.
+      // Any authenticated user can read chat messages
+      allow read: if isAuthenticated();
+      // Any authenticated user can create a message
+      allow create: if isAuthenticated();
+      // Users can only "delete" (update) their own messages. Moderators can delete any message.
+      allow update: if isAuthenticated() && (isOwner(resource.data.userId) || isModerator());
+      // Disallow direct deletion of messages. Deletion should be a soft delete via update.
       allow delete: if false;
     }
   }
