@@ -2,19 +2,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows a user to read/write ONLY to their own profile and its subcollections.
-    // The {document=**} is a recursive wildcard that matches all documents and subcollections.
-    match /userProfiles/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // This rule allows a user to read/write ONLY to their own artifacts and subcollections.
+    // This rule allows a user to read/write *anything* inside their own folder
+    // The {document=**} part is critical. It means "this folder and all subfolders"
     match /artifacts/{appId}/users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // This rule allows any authenticated user to read and write to the group chat.
-    match /groupChatMessages/{messageId} {
+    // This rule is for user profiles, which might still be in use.
+    match /userProfiles/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // This rule allows any authenticated user to read/write the public chat
+    match /groupChatMessages/{document=**} {
       allow read, write: if request.auth != null;
     }
   }
