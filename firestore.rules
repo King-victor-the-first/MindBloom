@@ -3,46 +3,53 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
 
+    // Rules for user profiles
     match /userProfiles/{userId} {
-      allow read, create: if isSignedIn();
-      allow update, delete: if isOwner(userId);
+      // A user can create their own profile, and read/update it.
+      allow create: if request.auth != null;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
       
+      // Moderators can read any user's profile for administrative purposes.
+      allow get: if request.auth != null && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
+
+      // Allow moderators to delete users (but not themselves)
+      allow delete: if request.auth != null 
+                    && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true
+                    && request.auth.uid != userId;
+
+      // Rules for mood entries subcollection
       match /moodEntries/{entryId} {
-        allow read, write: if isOwner(userId);
+        // A user can create and read their own mood entries.
+        allow read, create, update: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Rules for gratitude journal subcollection
+      match /gratitudeJournal/{journalId} {
+          // A user can read and write their own journal entries.
+          allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
-      match /gratitudeJournal/{entryDate} {
-        allow read, write: if isOwner(userId);
-      }
-
+      // Rules for safety plan subcollection
       match /safetyPlan/userPlan {
-        allow read, write: if isOwner(userId);
+          // A user can read and write their own safety plan.
+          allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
+    // Rules for the group chat
     match /groupChatMessages/{messageId} {
-      // Users can read all messages.
-      allow read: if isSignedIn();
-      // Users can create messages. The content is moderated by a Genkit flow before being written.
-      allow create: if isSignedIn();
-      // Users can only "delete" (soft delete by updating the isDeleted flag) their own messages.
-      // They cannot update other fields.
-      allow update: if isSignedIn()
-                    && resource.data.userId == request.auth.uid
-                    && request.resource.data.isDeleted == true
-                    && request.resource.data.keys().hasAll(['isDeleted', 'message', 'mediaUrl', 'mediaType'])
-                    && request.resource.data.size() == 4;
-      // Disallow hard deletes.
-      allow delete: if false;
+      // Any authenticated user can read the chat messages.
+      allow read: if request.auth != null;
+      
+      // An authenticated user can create a message for themselves.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      
+      // A user can 'delete' (update) their own message. Moderators can delete any message.
+      allow update: if request.auth != null && (
+        (resource.data.userId == request.auth.uid) || 
+        (get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true)
+      );
     }
   }
 }
