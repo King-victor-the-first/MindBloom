@@ -1,52 +1,34 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if the requesting user is a moderator
-    function isModerator(userId) {
-      return get(/databases/$(database)/documents/userProfiles/$(userId)).data.isModerator == true;
-    }
-
-    // Rules for the userProfiles collection
+    
+    // User profile data is readable by anyone, but only the user can write to their own profile.
     match /userProfiles/{userId} {
-      // Any authenticated user can create their own profile
-      allow create: if request.auth.uid == userId;
-      // Users can only get/update their own profile. Moderators can get any profile for the admin dashboard.
-      allow get: if request.auth.uid == userId || isModerator(request.auth.uid);
-      allow update: if request.auth.uid == userId || isModerator(request.auth.uid);
-      // Only moderators can list all users for the admin dashboard
-      allow list: if isModerator(request.auth.uid);
-      // Users can be deleted by moderators, but not by themselves directly from the client.
-      allow delete: if isModerator(request.auth.uid);
+      allow read;
+      allow write: if request.auth.uid == userId;
 
-      // Rules for the moodEntries subcollection
+      // Users can only read and write to their own mood, gratitude, and safety plan subcollections.
       match /moodEntries/{entryId} {
-        // A user can read and write to their own mood entries.
         allow read, write: if request.auth.uid == userId;
       }
 
-      // Rules for the gratitudeJournal subcollection
-      match /gratitudeJournal/{journalId} {
-        // A user can read and write to their own gratitude journal.
+      match /gratitudeJournal/{entryDate} {
         allow read, write: if request.auth.uid == userId;
       }
-      
-      // Rules for the safetyPlan subcollection
-      match /safetyPlan/{planId} {
-        // A user can read and write to their own safety plan.
-        allow read, write: if request.auth.uid == userId;
+
+      match /safetyPlan/userPlan {
+         allow read, write: if request.auth.uid == userId;
       }
     }
 
-    // Rules for the groupChatMessages collection
+    // Chat messages can be read by any authenticated user, but only created by them.
+    // Users can only update their own messages (for deletion).
     match /groupChatMessages/{messageId} {
-      // Any authenticated user can read (list) chat messages.
       allow read: if request.auth != null;
-      // An authenticated user can create messages.
-      allow create: if request.auth != null;
-      // A user can only update (soft-delete) their own messages. Moderators can delete any message.
-      allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isModerator(request.auth.uid));
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if false; // Disallow hard deletes
     }
   }
 }
