@@ -3,18 +3,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can read and write to their own profile and subcollections.
-    // This is the primary rule to fix the permission errors.
+    // Allow users to read and write ONLY their own profile data and subcollections.
+    // This is the key rule that fixes the permission error for mood, gratitude, etc.
     match /userProfiles/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // The group chat is readable by any authenticated user, but only writable
-    // by them for their own messages. Deletes are not allowed.
+
+    // Allow any authenticated user to read and write to the group chat.
+    // Moderation is handled by the application logic and an AI flow.
     match /groupChatMessages/{messageId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null;
     }
   }
 }
