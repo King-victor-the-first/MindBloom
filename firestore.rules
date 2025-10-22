@@ -1,51 +1,48 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    //
-    // Functions
-    //
-
-    function isUserAuthenticated() {
+    
+    function isSignedIn() {
       return request.auth != null;
     }
-
-    function isSuperAdmin() {
-      return request.auth.uid == 'BzsBHchaPEYuHwuhqlMiwRaMbBJ2';
-    }
-
-    function isRequestingUser(userId) {
+    
+    function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    function isExistingUser(userId) {
-      return exists(/databases/$(database)/documents/userProfiles/$(userId));
-    }
-
-    function userIsModerator(userId) {
-      let user = get(/databases/$(database)/documents/userProfiles/$(userId));
-      return user.data.isModerator == true;
-    }
-
-    //
-    // Rules
-    //
-
     match /userProfiles/{userId} {
-      allow read, write: if isRequestingUser(userId) || isSuperAdmin();
-    }
+      allow read, create: if isSignedIn();
+      allow update, delete: if isOwner(userId);
+      
+      match /moodEntries/{entryId} {
+        allow read, write: if isOwner(userId);
+      }
 
-    match /userProfiles/{userId}/moodEntries/{entryId} {
-      allow read, write: if isRequestingUser(userId);
+      match /gratitudeJournal/{entryDate} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /safetyPlan/userPlan {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     match /groupChatMessages/{messageId} {
-      allow read: if isUserAuthenticated();
-      allow create: if isUserAuthenticated();
-      allow update, delete: if isUserAuthenticated() && (
-        resource.data.userId == request.auth.uid || 
-        userIsModerator(request.auth.uid)
-      );
+      // Users can read all messages.
+      allow read: if isSignedIn();
+      // Users can create messages. The content is moderated by a Genkit flow before being written.
+      allow create: if isSignedIn();
+      // Users can only "delete" (soft delete by updating the isDeleted flag) their own messages.
+      // They cannot update other fields.
+      allow update: if isSignedIn()
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.isDeleted == true
+                    && request.resource.data.keys().hasAll(['isDeleted', 'message', 'mediaUrl', 'mediaType'])
+                    && request.resource.data.size() == 4;
+      // Disallow hard deletes.
+      allow delete: if false;
     }
   }
 }
