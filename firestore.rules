@@ -2,21 +2,34 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users can only read and write their own profile data.
+    // User profile and subcollections
     match /userProfiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      // Users can read and write to all subcollections within their own profile.
-      // This covers moodEntries, gratitudeJournal, and safetyPlan.
-      match /{allDocuments=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
+      // Allow users to read, create, and update their own profile.
+      allow read, create, update: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow super admin to read all profiles (for the admin dashboard)
+      allow read: if request.auth != null && get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true;
     }
 
-    // Any authenticated user can read and write to the group chat.
-    // Writes are further checked by an AI moderation flow in the application code.
+    // This rule allows users to access any document in any subcollection under their own user profile.
+    // This covers gratitudeJournal, moodEntries, and safetyPlan.
+    match /userProfiles/{userId}/{subcollection}/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Group chat messages
     match /groupChatMessages/{messageId} {
-      allow read, write: if request.auth != null;
+      // Any authenticated user can read messages.
+      allow read: if request.auth != null;
+      
+      // Any authenticated user can create messages.
+      allow create: if request.auth != null;
+
+      // Only the user who created the message or a moderator can update (soft delete) it.
+      allow update: if request.auth != null && (resource.data.userId == request.auth.uid || get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isModerator == true);
+
+      // Disallow direct deletion of chat messages from the client.
+      allow delete: if false;
     }
   }
 }
