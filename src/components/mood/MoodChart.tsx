@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo } from "react";
@@ -18,14 +19,19 @@ type MoodEntry = {
   };
 };
 
+// These variables are expected to be globally available in the Firebase Hosting environment.
+declare var __app_id: string | undefined;
+
+
 export default function MoodChart() {
   const { user } = useUser();
   const firestore = useFirestore();
 
   const moodEntriesRef = useMemoFirebase(() => {
     if (!user) return null;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     return query(
-        collection(firestore, `userProfiles/${user.uid}/moodEntries`), 
+        collection(firestore, `artifacts/${appId}/users/${user.uid}/moodEntries`), 
         orderBy("createdAt", "desc"),
         limit(30)
     );

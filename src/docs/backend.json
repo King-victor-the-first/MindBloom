@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -181,23 +182,23 @@
       },
       "description": "Stores public profile information for a user."
     },
-    "/userProfiles/{userId}/moodEntries/{entryId}": {
+    "/artifacts/{appId}/users/{userId}/moodEntries/{entryId}": {
         "schema": {
             "$ref": "#/entities/MoodEntry"
         },
         "description": "Stores a user's mood entries over time."
     },
-    "/userProfiles/{userId}/gratitudeJournal/{YYYY-MM-DD}": {
+    "/artifacts/{appId}/users/{userId}/gratitudeJournal/{YYYY-MM-DD}": {
         "schema": {
             "$ref": "#/entities/GratitudeEntry"
         },
         "description": "Stores a user's daily gratitude journal entries."
     },
-    "/userProfiles/{userId}/safetyPlan/userPlan": {
+    "/artifacts/{appId}/users/{userId}/safetyPlan/userPlan": {
         "schema": {
             "$ref": "#/entities/SafetyPlan"
         },
-        "description": "A single document containing the user's safety plan."
+        "description": "A single document containing the user's safety plan, following the standardized artifact path."
     },
     "/groupChatMessages/{messageId}": {
       "schema": {

@@ -21,6 +21,9 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 
+// These variables are expected to be globally available in the Firebase Hosting environment.
+declare var __app_id: string | undefined;
+
 export default function GratitudeJournal() {
   const [showModal, setShowModal] = useState(false);
   const [entryText, setEntryText] = useState("");
@@ -33,7 +36,8 @@ export default function GratitudeJournal() {
 
   const entryRef = useMemoFirebase(() => {
     if (!user) return null; // CRITICAL: Wait until user object is available
-    return doc(firestore, `userProfiles/${user.uid}/gratitudeJournal`, todayStr);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    return doc(firestore, `artifacts/${appId}/users/${user.uid}/gratitudeJournal`, todayStr);
   }, [user, firestore, todayStr]); // Dependency on `user` is key
 
   const { data: todayEntry, isLoading: isEntryLoading } = useDoc<GratitudeEntry>(entryRef);
