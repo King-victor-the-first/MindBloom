@@ -2,7 +2,7 @@
 "use client"
 
 import { useMemo } from "react";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Brush } from "recharts";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,7 @@ export default function MoodChart() {
     return query(
         collection(firestore, `artifacts/${appId}/users/${user.uid}/moodEntries`), 
         orderBy("createdAt", "desc"),
-        limit(30)
+        limit(100)
     );
   }, [firestore, user]);
 
@@ -72,7 +72,7 @@ export default function MoodChart() {
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="h-60 w-full">
+        <div className="h-[300px] w-full">
             <ResponsiveContainer>
                 <AreaChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                     <defs>
@@ -90,8 +90,7 @@ export default function MoodChart() {
                         interval="preserveStartEnd"
                         tickFormatter={(value) => {
                             if (typeof value !== 'string' || !value.includes(',')) return value;
-                            // value is "MMM d, h:mm a", we want "h:mm a"
-                            return value.split(',')[1]?.trim() || '';
+                            return value.split(',')[0]?.trim() || '';
                         }}
                     />
                     <YAxis 
@@ -112,6 +111,7 @@ export default function MoodChart() {
                         }}
                     />
                     <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorMood)" />
+                    <Brush dataKey="date" height={30} stroke="hsl(var(--primary))" y={220} />
                 </AreaChart>
             </ResponsiveContainer>
         </div>
