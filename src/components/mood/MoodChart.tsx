@@ -44,7 +44,7 @@ export default function MoodChart() {
     return moodEntries
         .map(entry => ({
             ...entry,
-            date: entry.createdAt ? format(new Date(entry.createdAt.seconds * 1000), "MMM d") : 'N/A',
+            date: entry.createdAt ? format(new Date(entry.createdAt.seconds * 1000), "MMM d, h:mm a") : 'N/A',
         }))
         .reverse(); // reverse to show oldest first
   }, [moodEntries]);
@@ -63,7 +63,7 @@ export default function MoodChart() {
         <Card className="text-center">
             <CardHeader>
                 <CardTitle>Not Enough Data</CardTitle>
-                <CardDescription>Log your mood for a few days to see your trends here.</CardDescription>
+                <CardDescription>Log your mood a couple of times to see your trends here.</CardDescription>
             </CardHeader>
         </Card>
     )
@@ -87,6 +87,8 @@ export default function MoodChart() {
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
+                        interval="preserveStartEnd"
+                        tickFormatter={(value) => format(new Date(value), "h:mm a")}
                     />
                     <YAxis 
                         stroke="hsl(var(--muted-foreground))"
@@ -99,6 +101,7 @@ export default function MoodChart() {
                     />
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <Tooltip
+                        labelFormatter={(label) => format(new Date(label), "MMM d, yyyy, h:mm a")}
                         contentStyle={{
                             backgroundColor: 'hsl(var(--card))',
                             borderColor: 'hsl(var(--border))',
