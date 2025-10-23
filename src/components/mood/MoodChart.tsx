@@ -105,7 +105,6 @@ export default function MoodChart() {
                     />
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <Tooltip
-                        labelFormatter={(label) => format(new Date(label), "MMM d, yyyy, h:mm a")}
                         contentStyle={{
                             backgroundColor: 'hsl(var(--card))',
                             borderColor: 'hsl(var(--border))',
