@@ -27,7 +27,6 @@ const navItems = [
     ]
   },
   { href: '/insights', label: 'Insights', icon: LineChart },
-  { href: '/activities', label: 'Journal', icon: ClipboardList },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

@@ -23,7 +23,7 @@ export default function BottomNavBar() {
     <footer className="fixed bottom-4 left-4 right-4 z-50 md:hidden">
       <nav className="max-w-md mx-auto grid grid-cols-5 items-center h-16 bg-card/95 backdrop-blur-sm border border-border/80 rounded-full shadow-lg">
         {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href) || (item.href === '/therapy' && pathname.startsWith('/chat'));
+          const isActive = (item.href === '/insights' && (pathname.startsWith('/insights') || pathname.startsWith('/activities'))) || (pathname.startsWith(item.href) && item.href !== '/insights') || (item.href === '/therapy' && pathname.startsWith('/chat'));
           if (item.icon === 'siri') {
             return (
               <div key={item.href} className="flex justify-center" style={{ gridColumn: '3' }}>
