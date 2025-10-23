@@ -88,7 +88,11 @@ export default function MoodChart() {
                         tickLine={false}
                         axisLine={false}
                         interval="preserveStartEnd"
-                        tickFormatter={(value) => format(new Date(value), "h:mm a")}
+                        tickFormatter={(value) => {
+                            if (typeof value !== 'string' || !value.includes(',')) return value;
+                            // value is "MMM d, h:mm a", we want "h:mm a"
+                            return value.split(',')[1]?.trim() || '';
+                        }}
                     />
                     <YAxis 
                         stroke="hsl(var(--muted-foreground))"
