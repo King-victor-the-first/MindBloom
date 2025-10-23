@@ -7,3 +7,4 @@ import '@/ai/flows/moderate-group-chat.ts';
 import '@/ai/flows/analyze-mood-from-steps.ts';
 import '@/ai/flows/therapy-conversation.ts';
 import '@/ai/flows/generate-speech-sample.ts';
+import '@/ai/flows/summarize-gratitude-journals.ts';

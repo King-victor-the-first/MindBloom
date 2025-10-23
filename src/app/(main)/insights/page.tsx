@@ -1,5 +1,6 @@
 import ActivitySurvey from "@/components/activities/ActivitySurvey";
 import InsightCards from "@/components/insights/InsightCards";
+import PastGratitudeEntries from "@/components/insights/PastGratitudeEntries";
 import { Separator } from "@/components/ui/separator";
 
 export default function InsightsPage() {
@@ -11,6 +12,8 @@ export default function InsightsPage() {
       </div>
       <div className="space-y-12">
         <InsightCards />
+        <Separator />
+        <PastGratitudeEntries />
         <Separator />
         <div>
            <div className="text-center mb-8">
