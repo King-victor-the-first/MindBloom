@@ -2,25 +2,39 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Footprints, Smile, Bed, Edit } from "lucide-react";
+import { Footprints, Smile, Bed, Edit, Loader2 } from "lucide-react";
 import { useWellnessStore } from "@/lib/data";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useUser } from "@/firebase";
+import { getFitnessData } from "@/ai/flows/get-fitness-data";
+import { format } from "date-fns";
 
 export default function DashboardMetrics() {
     const { steps, setSteps, sleepHours, setSleepHours, currentMood } = useWellnessStore();
-    const [isEditingSteps, setIsEditingSteps] = useState(false);
-    const [stepInput, setStepInput] = useState(steps.toString());
-
-    const handleStepSave = () => {
-        const newSteps = parseInt(stepInput, 10);
-        if (!isNaN(newSteps) && newSteps >= 0) {
-            setSteps(newSteps);
-            setIsEditingSteps(false);
-        }
-    };
+    const { user } = useUser();
+    const [isLoadingSteps, setIsLoadingSteps] = useState(true);
     
+    useEffect(() => {
+      const fetchSteps = async () => {
+        if (!user) return;
+        setIsLoadingSteps(true);
+        try {
+          const today = format(new Date(), 'yyyy-MM-dd');
+          const fitnessData = await getFitnessData({ userId: user.uid, date: today });
+          setSteps(fitnessData.steps);
+        } catch (error) {
+          console.error("Failed to fetch fitness data:", error);
+          // Keep existing or default steps if API fails
+        } finally {
+          setIsLoadingSteps(false);
+        }
+      };
+
+      fetchSteps();
+    }, [user, setSteps]);
+
     const moodMap: {[key: string]: {color: string, emoji: string}} = {
         "Great": { color: "text-green-500", emoji: "😄" },
         "Good": { color: "text-green-400", emoji: "😊" },
@@ -63,27 +77,14 @@ export default function DashboardMetrics() {
               <Footprints className="h-4 w-4 text-muted-foreground text-yellow-500" />
             </CardHeader>
             <CardContent>
-                {isEditingSteps ? (
-                    <div className="flex items-center gap-2">
-                        <Input 
-                            type="number"
-                            value={stepInput}
-                            onChange={(e) => setStepInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleStepSave()}
-                            className="h-9"
-                            autoFocus
-                        />
-                        <Button size="sm" onClick={handleStepSave}>Save</Button>
+                {isLoadingSteps ? (
+                    <div className="flex items-center justify-center h-9">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
                 ) : (
-                    <div className="flex items-center justify-between">
-                         <div className="text-2xl font-bold">{steps.toLocaleString()}</div>
-                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditingSteps(true)}>
-                            <Edit className="h-4 w-4" />
-                         </Button>
-                    </div>
+                    <div className="text-2xl font-bold">{steps.toLocaleString()}</div>
                 )}
-              <p className="text-xs text-muted-foreground">Click the pencil to edit</p>
+              <p className="text-xs text-muted-foreground">From Google Fit</p>
             </CardContent>
           </Card>
       </div>
