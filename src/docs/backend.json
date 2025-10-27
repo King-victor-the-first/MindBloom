@@ -170,6 +170,27 @@
         }
       },
       "required": ["userId", "userName", "createdAt"]
+    },
+    "Medication": {
+      "title": "Medication",
+      "description": "Represents a single medication reminder for a user.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the medication."
+        },
+        "dosage": {
+          "type": "string",
+          "description": "The dosage of the medication (e.g., 10mg)."
+        },
+        "time": {
+          "type": "string",
+          "format": "time",
+          "description": "The time for the reminder (e.g., 09:00)."
+        }
+      },
+      "required": ["name", "dosage", "time"]
     }
   },
   "auth": {
@@ -199,6 +220,12 @@
             "$ref": "#/entities/SafetyPlan"
         },
         "description": "A single document containing the user's safety plan, following the standardized artifact path."
+    },
+    "/artifacts/{appId}/users/{userId}/medications/{medicationId}": {
+      "schema": {
+        "$ref": "#/entities/Medication"
+      },
+      "description": "Stores a user's medication reminders."
     },
     "/groupChatMessages/{messageId}": {
       "schema": {

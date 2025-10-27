@@ -7,7 +7,7 @@ export interface Activity {
 }
 
 export interface Medication {
-  id: number;
+  id: string;
   name: string;
   dosage: string;
   time: string;

@@ -1,5 +1,5 @@
 
-import type { MoodBooster, Medication } from '@/lib/types';
+import type { MoodBooster } from '@/lib/types';
 import { 
     Sprout, ConciergeBell, Cookie, Star, Dog, Coffee, PenSquare, Users, MessageSquarePlus, Trash2, Send, Podcast, 
     StretchHorizontal, GlassWater, NotebookPen, Smile, DoorOpen, Leaf, Heart, Music, BookOpen, Sun, Moon, Phone, 
@@ -127,18 +127,3 @@ export const moodBoosters: MoodBooster[] = [
   { text: "Charge your devices", icon: BatteryCharging },
   { text: "Plan your meals for the next couple of days", icon: NotebookPen },
 ];
-
-export const medications: Medication[] = [
-    {
-        id: 1,
-        name: "Serenex",
-        dosage: "10mg",
-        time: "08:00 AM",
-    },
-    {
-        id: 2,
-        name: "Calmify",
-        dosage: "5mg",
-        time: "09:00 PM",
-    }
-]
