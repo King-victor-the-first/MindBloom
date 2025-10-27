@@ -1,6 +1,5 @@
 import MoodSelector from "@/components/mood/MoodSelector";
 import SpinWheel from "@/components/mood/SpinWheel";
-import StepsMoodAnalyzer from "@/components/mood/StepsMoodAnalyzer";
 import MoodChart from "@/components/mood/MoodChart";
 import { Separator } from "@/components/ui/separator";
 
@@ -29,12 +28,6 @@ export default function MoodPage() {
           <SpinWheel />
         </div>
 
-        <Separator />
-        
-        <div>
-          <h2 className="text-2xl font-headline font-semibold text-center mb-6">Wellness Insights</h2>
-          <StepsMoodAnalyzer />
-        </div>
       </div>
     </div>
   );
