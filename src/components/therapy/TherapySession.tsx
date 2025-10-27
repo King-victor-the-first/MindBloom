@@ -38,43 +38,54 @@ export default function TherapySession() {
     setVoice(savedVoice);
   }, []);
 
-  const playAudio = useCallback((audioDataUri: string) => {
+  const playAudio = useCallback((audioDataUri: string, onEnd: () => void) => {
     if (audioRef.current) {
         setIsAiSpeaking(true);
         audioRef.current.src = audioDataUri;
         audioRef.current.play();
         audioRef.current.onended = () => {
             setIsAiSpeaking(false);
-            // Restart listening only after AI is done speaking
-            recognitionRef.current?.start();
+            onEnd(); // Callback to be executed after audio finishes
         };
         audioRef.current.onerror = () => {
             console.error("Error playing audio.");
             setIsAiSpeaking(false);
-            // If audio fails, restart listening
-            recognitionRef.current?.start();
+            onEnd(); // Also call onEnd on error to avoid getting stuck
         };
     }
   }, []);
 
+  const handleSpeech = useCallback(async (text: string, isGreeting = false) => {
+    if (!text || (isAiSpeaking && !isGreeting)) return;
 
-  const handleSpeech = useCallback(async (text: string) => {
-    if (!text || isAiSpeaking) return;
+    const userMessageText = isGreeting ? " " : text;
+    const userMessage: TranscriptItem = { speaker: "user", text: userMessageText };
+    if (!isGreeting) {
+       setTranscript((prev) => [...prev, userMessage]);
+    }
 
-    // Add user message to UI and history
-    const userMessage: TranscriptItem = { speaker: "user", text };
-    setTranscript((prev) => [...prev, userMessage]);
-    const newHistory: MessageData[] = [...history, { role: 'user', content: [{ text }] }];
-    setHistory(newHistory);
+    const currentHistory = isGreeting 
+        ? history 
+        : [...history, { role: 'user', content: [{ text }] }];
+    if (!isGreeting) {
+        setHistory(currentHistory);
+    }
     
     // Get AI response
     try {
-      const result = await therapyConversation({ history: newHistory, message: text, voiceName: voice });
+      const result = await therapyConversation({ history: currentHistory, message: text, voiceName: voice });
       const aiMessage: TranscriptItem = { speaker: "ai", text: result.response };
       
       setTranscript((prev) => [...prev, aiMessage]);
       setHistory((prev) => [...prev, { role: 'model', content: [{ text: result.response }] }]);
-      playAudio(result.audio);
+      
+      playAudio(result.audio, () => {
+          // This callback runs after the audio finishes.
+          // We always want to start listening again after the AI speaks.
+          if(recognitionRef.current && !isListening) {
+            recognitionRef.current.start();
+          }
+      });
 
     } catch (error) {
       console.error("Error with therapy conversation flow:", error);
@@ -83,17 +94,17 @@ export default function TherapySession() {
       setTranscript((prev) => [...prev, aiMessage]);
       setHistory((prev) => [...prev, { role: 'model', content: [{text: errorMessage}] }]);
     }
-  }, [history, voice, playAudio, isAiSpeaking]);
+  }, [history, voice, playAudio, isAiSpeaking, isListening]);
 
 
   // --- Initial Greeting ---
   useEffect(() => {
     if (!showDisclaimer && history.length === 0) {
       const initialGreeting = "Hello, I'm Bloom. I'm here to listen. How are you feeling today?";
-      handleSpeech(initialGreeting);
+      // Pass `true` for isGreeting to handle it specially
+      handleSpeech(initialGreeting, true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDisclaimer]);
+  }, [showDisclaimer, history, handleSpeech]);
 
 
   // --- Speech Recognition Setup ---
@@ -171,8 +182,6 @@ export default function TherapySession() {
 
   const handleDisclaimerAgree = () => {
       setShowDisclaimer(false);
-      // Start listening immediately after disclaimer is agreed to
-      setTimeout(() => recognitionRef.current?.start(), 100);
   }
 
 
@@ -214,9 +223,13 @@ export default function TherapySession() {
         </div>
 
         <div className="absolute bottom-32 left-4 right-4 text-center max-h-48 overflow-y-auto">
-            {transcript.length > 0 && <p className={cn(
+            {transcript.length > 0 && transcript[transcript.length-1].speaker !== 'user' && <p className={cn(
                 "text-xl transition-opacity duration-300",
-                transcript[transcript.length-1].speaker === 'user' ? 'text-white' : 'text-primary/90'
+                "text-primary/90"
+            )}>"{transcript[transcript.length-1].text}"</p>}
+             {transcript.length > 0 && transcript[transcript.length-1].speaker === 'user' && transcript[transcript.length-1].text.trim() && <p className={cn(
+                "text-xl transition-opacity duration-300",
+                "text-white"
             )}>"{transcript[transcript.length-1].text}"</p>}
         </div>
 
