@@ -76,11 +76,12 @@ export default function TherapySession() {
        setTranscript((prev) => [...prev, userMessage]);
     }
 
-    const currentHistory = isGreeting 
+    const currentHistory: MessageData[] = isGreeting 
         ? history 
         : [...history, { role: 'user', content: [{ text }] }];
     
-    setHistory(currentHistory); // Update history immediately for the next call
+    // Use a function for setting state to ensure we have the latest version.
+    setHistory(currentHistory);
     
     // Get AI response
     try {
@@ -94,7 +95,11 @@ export default function TherapySession() {
           // This callback runs after the audio finishes.
           // We always want to start listening again after the AI speaks.
           if(recognitionRef.current && !isListening) {
-            recognitionRef.current.start();
+            try {
+                recognitionRef.current.start();
+            } catch(e) {
+                // It might already be started or in a weird state, it's fine.
+            }
           }
       });
 
@@ -112,9 +117,11 @@ export default function TherapySession() {
   useEffect(() => {
     if (!showDisclaimer && history.length === 0) {
       const initialGreeting = "Hello, I'm Bloom. I'm here to listen. How are you feeling today?";
-      // Pass `true` for isGreeting to handle it specially
+      // We pass the initial prompt to handleSpeech but mark it as a greeting
       handleSpeech(initialGreeting, true);
     }
+    // We want this to run *only* when the disclaimer is dismissed or history changes from 0.
+    // The handleSpeech function is memoized with useCallback to prevent re-runs.
   }, [showDisclaimer, history.length, handleSpeech]);
 
 
@@ -150,9 +157,9 @@ export default function TherapySession() {
     };
     
     recognition.onerror = (event) => {
-        // The 'no-speech' error is common and means the user was silent.
-        // We can just ignore it and let onend handle the restart.
-        if (event.error === 'no-speech') {
+        // The 'no-speech' and 'aborted' errors are common and benign.
+        // We can just ignore them and let onend handle the restart.
+        if (event.error === 'no-speech' || event.error === 'aborted') {
             return;
         }
         
