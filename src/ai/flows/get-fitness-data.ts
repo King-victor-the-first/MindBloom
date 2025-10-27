@@ -31,7 +31,7 @@ export async function getFitnessData(input: GetFitnessDataInput): Promise<GetFit
 }
 
 // In a real implementation, this tool would handle the OAuth and API calls to Google Fit.
-// For now, it returns mock data.
+// For now, it returns mock data that is consistent for a given day.
 const fetchStepsFromFitAPI = ai.defineTool(
     {
       name: 'fetchStepsFromFitAPI',
@@ -41,9 +41,16 @@ const fetchStepsFromFitAPI = ai.defineTool(
     },
     async ({ userId, date }) => {
       console.log(`Simulating API call to Google Fit for user ${userId} on ${date}.`);
-      // In a real scenario, you would use OAuth credentials to make an API request here.
-      // This is placeholder data.
-      const mockSteps = Math.floor(Math.random() * (15000 - 2000 + 1)) + 2000;
+      
+      // Create a seeded random number based on the date so it's consistent for the day.
+      const dateObj = new Date(date);
+      const seed = dateObj.getFullYear() * 10000 + (dateObj.getMonth() + 1) * 100 + dateObj.getDate();
+      const pseudoRandom = () => {
+        let x = Math.sin(seed) * 10000;
+        return x - Math.floor(x);
+      };
+
+      const mockSteps = Math.floor(pseudoRandom() * (15000 - 2000 + 1)) + 2000;
       return { steps: mockSteps };
     }
 );
