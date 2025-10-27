@@ -42,13 +42,25 @@ export default function TherapySession() {
     if (audioRef.current) {
         setIsAiSpeaking(true);
         audioRef.current.src = audioDataUri;
-        audioRef.current.play();
+        
+        const playPromise = audioRef.current.play();
+
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                console.error("Error playing audio:", error);
+                // If play() is interrupted or fails, ensure we clean up state.
+                setIsAiSpeaking(false);
+                onEnd();
+            });
+        }
+
         audioRef.current.onended = () => {
             setIsAiSpeaking(false);
             onEnd(); // Callback to be executed after audio finishes
         };
-        audioRef.current.onerror = () => {
-            console.error("Error playing audio.");
+        
+        audioRef.current.onerror = (e) => {
+            console.error("Audio element error:", e);
             setIsAiSpeaking(false);
             onEnd(); // Also call onEnd on error to avoid getting stuck
         };
@@ -67,9 +79,8 @@ export default function TherapySession() {
     const currentHistory = isGreeting 
         ? history 
         : [...history, { role: 'user', content: [{ text }] }];
-    if (!isGreeting) {
-        setHistory(currentHistory);
-    }
+    
+    setHistory(currentHistory); // Update history immediately for the next call
     
     // Get AI response
     try {
@@ -104,7 +115,7 @@ export default function TherapySession() {
       // Pass `true` for isGreeting to handle it specially
       handleSpeech(initialGreeting, true);
     }
-  }, [showDisclaimer, history, handleSpeech]);
+  }, [showDisclaimer, history.length, handleSpeech]);
 
 
   // --- Speech Recognition Setup ---
@@ -129,7 +140,12 @@ export default function TherapySession() {
       // Automatically restart listening if the AI is not speaking.
       // This handles cases where recognition stops due to silence.
       if (!isAiSpeaking) {
-        recognition.start();
+        try {
+            recognition.start();
+        } catch(e) {
+            // This can happen if the component unmounts quickly
+            console.warn("Could not restart recognition", e)
+        }
       }
     };
     
