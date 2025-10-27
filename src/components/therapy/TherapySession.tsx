@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, PhoneOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Loader2, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DisclaimerDialog from "./DisclaimerDialog";
 import { therapyConversation } from "@/ai/flows/therapy-conversation";
@@ -16,11 +16,13 @@ type TranscriptItem = {
   text: string;
 };
 
+// A state machine to manage the session's flow and prevent race conditions.
+type SessionState = 'idle' | 'listening' | 'thinking' | 'speaking';
+
 export default function TherapySession() {
   const [isMounted, setIsMounted] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(true);
-  const [isListening, setIsListening] = useState(false);
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [sessionState, setSessionState] = useState<SessionState>('idle');
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [history, setHistory] = useState<MessageData[]>([]);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -38,59 +40,46 @@ export default function TherapySession() {
     setVoice(savedVoice);
   }, []);
 
-  const playAudio = useCallback((audioDataUri: string, onEnd: () => void) => {
+  const playAudio = useCallback((audioDataUri: string) => {
     if (audioRef.current) {
-        setIsAiSpeaking(true);
-        audioRef.current.src = audioDataUri;
-        
-        const playPromise = audioRef.current.play();
+      setSessionState('speaking');
+      audioRef.current.src = audioDataUri;
+      
+      const playPromise = audioRef.current.play();
 
-        if (playPromise !== undefined) {
-            playPromise.catch(error => {
-                console.error("Error playing audio:", error);
-                // If play() is interrupted or fails, ensure we clean up state.
-                setIsAiSpeaking(false);
-                onEnd();
-            });
-        }
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+            console.error("Error playing audio:", error);
+            // If play fails, go back to idle to allow user to try again.
+            setSessionState('idle');
+        });
+      }
 
-        audioRef.current.onended = () => {
-            setIsAiSpeaking(false);
-            onEnd(); // Callback to be executed after audio finishes
-        };
-        
-        audioRef.current.onerror = (e) => {
-            console.error("Audio element error:", e);
-            setIsAiSpeaking(false);
-            onEnd(); // Also call onEnd on error to avoid getting stuck
-        };
+      audioRef.current.onended = () => {
+        // After audio finishes, go back to idle state.
+        setSessionState('idle');
+      };
+      
+      audioRef.current.onerror = (e) => {
+          console.error("Audio element error:", e);
+          setSessionState('idle');
+      };
     }
   }, []);
 
-  const startListening = useCallback(() => {
-    if (recognitionRef.current && !isListening && !isAiSpeaking) {
-      try {
-        recognitionRef.current.start();
-      } catch (e) {
-        // This can happen if it's already starting, which is fine.
-      }
-    }
-  }, [isListening, isAiSpeaking]);
 
-
-  const handleSpeech = useCallback(async (text: string, isGreeting = false) => {
-    if (!text || isAiSpeaking) return;
-
-    const userMessageText = isGreeting ? " " : text;
-    const userMessage: TranscriptItem = { speaker: "user", text: userMessageText };
-    if (!isGreeting) {
-       setTranscript((prev) => [...prev, userMessage]);
+  const handleSpeech = useCallback(async (text: string) => {
+    if (!text) {
+        setSessionState('idle'); // Nothing was said, go back to idle.
+        return;
     }
 
-    const currentHistory: MessageData[] = isGreeting 
-        ? history 
-        : [...history, { role: 'user', content: [{ text }] }];
-    
+    setSessionState('thinking'); // Move to thinking state while waiting for AI.
+
+    const userMessage: TranscriptItem = { speaker: "user", text };
+    setTranscript((prev) => [...prev, userMessage]);
+
+    const currentHistory: MessageData[] = [...history, { role: 'user', content: [{ text }] }];
     setHistory(currentHistory);
     
     try {
@@ -101,13 +90,10 @@ export default function TherapySession() {
       setHistory((prev) => [...prev, { role: 'model', content: [{ text: result.response }] }]);
       
       if (result.audio) {
-        playAudio(result.audio, () => {
-            // After audio finishes, start listening again.
-            startListening();
-        });
+        playAudio(result.audio);
       } else {
-        // If there's no audio (e.g., TTS failed), just start listening again.
-        startListening();
+        // If there's no audio (e.g., TTS failed), just go to idle state.
+        setSessionState('idle');
       }
 
     } catch (error) {
@@ -116,20 +102,37 @@ export default function TherapySession() {
       const aiMessage: TranscriptItem = { speaker: "ai", text: errorMessage };
       setTranscript((prev) => [...prev, aiMessage]);
       setHistory((prev) => [...prev, { role: 'model', content: [{text: errorMessage}] }]);
-      startListening(); // Also start listening again on error.
+      setSessionState('idle'); // Go to idle state on error.
     }
-  }, [history, voice, playAudio, isAiSpeaking, startListening]);
+  }, [history, voice, playAudio]);
 
 
   // --- Initial Greeting ---
   useEffect(() => {
-    // We want this to run *only* when the disclaimer is dismissed for the first time.
-    if (!showDisclaimer && history.length === 0) {
+    if (!showDisclaimer && history.length === 0 && sessionState === 'idle') {
       const initialGreeting = "Hello, I'm Bloom. I'm here to listen. How are you feeling today?";
-      // We pass the initial prompt to handleSpeech but mark it as a greeting
-      handleSpeech(initialGreeting, true);
+      setSessionState('thinking'); // AI is preparing to 'speak' the greeting
+      
+      (async () => {
+          try {
+            const result = await therapyConversation({ history: [], message: initialGreeting, voiceName: voice });
+            const aiMessage: TranscriptItem = { speaker: "ai", text: result.response };
+            
+            setTranscript((prev) => [...prev, aiMessage]);
+            setHistory((prev) => [...prev, { role: 'model', content: [{ text: result.response }] }]);
+            
+            if (result.audio) {
+              playAudio(result.audio);
+            } else {
+              setSessionState('idle');
+            }
+          } catch(e) {
+            console.error("Failed to generate initial greeting", e);
+            setSessionState('idle');
+          }
+      })();
     }
-  }, [showDisclaimer, history.length, handleSpeech]);
+  }, [showDisclaimer, history, sessionState, voice, playAudio]);
 
 
   // --- Speech Recognition Setup ---
@@ -140,37 +143,33 @@ export default function TherapySession() {
     }
 
     const SpeechRecognition = window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
+    if (!recognitionRef.current) {
+        recognitionRef.current = new SpeechRecognition();
+    }
     const recognition = recognitionRef.current;
     
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
-    recognition.onstart = () => setIsListening(true);
+    recognition.onstart = () => {
+        if (sessionState !== 'listening') setSessionState('listening');
+    };
     
     recognition.onend = () => {
-      setIsListening(false);
-      // Automatically restart listening if the AI is not speaking.
-      // This handles cases where recognition stops due to silence.
-      if (!isAiSpeaking && recognitionRef.current) {
-        // A small delay can prevent rapid-fire restarts if the 'end' event fires prematurely.
-        setTimeout(() => startListening(), 100);
+      // Only set to idle if we were in the listening state.
+      // This prevents onend from interfering when we are thinking or speaking.
+      if (sessionState === 'listening') {
+        setSessionState('idle');
       }
     };
     
     recognition.onerror = (event) => {
-        // The 'no-speech' and 'aborted' errors are common and benign.
-        // We can just ignore them and let onend handle the restart.
-        if (event.error === 'no-speech' || event.error === 'aborted') {
-            return;
+        if (event.error !== 'aborted' && event.error !== 'no-speech') {
+            console.error("Speech recognition error:", event.error);
         }
-        
-        console.error("Speech recognition error:", event.error);
-        setIsListening(false);
-
-        if (event.error === 'not-allowed') {
-          alert('Microphone access was denied. Please allow microphone access in your browser settings.');
+        if (sessionState === 'listening') {
+            setSessionState('idle');
         }
     };
     
@@ -182,6 +181,8 @@ export default function TherapySession() {
 
         if (finalTranscript.trim()) {
             handleSpeech(finalTranscript.trim());
+        } else {
+            setSessionState('idle');
         }
     };
 
@@ -194,24 +195,34 @@ export default function TherapySession() {
         audioRef.current.src = "";
       }
     };
-  }, [handleSpeech, isAiSpeaking, startListening]);
+  }, [handleSpeech, sessionState]);
 
   const toggleListen = () => {
-    if (isAiSpeaking) return;
-
-    if (isListening) {
+    if (sessionState === 'listening') {
       recognitionRef.current?.stop();
-    } else {
-      startListening();
+    } else if (sessionState === 'idle') {
+      recognitionRef.current?.start();
     }
   };
 
   const handleDisclaimerAgree = () => {
       setShowDisclaimer(false);
-      // Directly start listening after disclaimer is agreed to.
-      startListening();
+      setSessionState('idle');
   }
 
+  const getStatusContent = () => {
+    switch (sessionState) {
+        case 'listening':
+            return <p>Listening...</p>;
+        case 'thinking':
+            return <div className="flex items-center gap-2"><BrainCircuit className="w-5 h-5 animate-pulse" /> AI is thinking...</div>;
+        case 'speaking':
+            return <p>AI is speaking...</p>;
+        case 'idle':
+        default:
+            return <p>Tap mic to speak</p>;
+    }
+  };
 
   if (!isMounted) {
     return (
@@ -225,11 +236,13 @@ export default function TherapySession() {
     return <DisclaimerDialog onAgree={handleDisclaimerAgree} />;
   }
 
+  const isMicButtonDisabled = sessionState === 'speaking' || sessionState === 'thinking';
+  
   return (
     <div className="h-screen w-full flex flex-col bg-gray-900 text-white">
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
-        <div className={cn("absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30", isAiSpeaking && 'animate-pulse')}/>
-        <div className={cn("w-48 h-48 sm:w-64 sm:h-64 rounded-full overflow-hidden border-4 transition-all duration-500", isAiSpeaking ? 'border-primary shadow-[0_0_30px] shadow-primary/50' : 'border-gray-600')}>
+        <div className={cn("absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30", sessionState === 'speaking' && 'animate-pulse')}/>
+        <div className={cn("w-48 h-48 sm:w-64 sm:h-64 rounded-full overflow-hidden border-4 transition-all duration-500", sessionState === 'speaking' ? 'border-primary shadow-[0_0_30px] shadow-primary/50' : 'border-gray-600')}>
             {aiAvatar && (
                 <video 
                     src={aiAvatar.imageUrl} 
@@ -245,19 +258,15 @@ export default function TherapySession() {
         <h2 className="text-2xl font-bold mt-6 font-headline">AI Therapist</h2>
         <p className="text-gray-300">Session in progress...</p>
         <div className="mt-8 text-lg text-gray-200 h-20 flex items-center justify-center">
-            {isAiSpeaking && <p>AI is speaking...</p>}
-            {isListening && !isAiSpeaking && <p>Listening...</p>}
-            {!isListening && !isAiSpeaking && <p>Mic is off. Tap to speak.</p>}
+           {getStatusContent()}
         </div>
 
         <div className="absolute bottom-32 left-4 right-4 text-center max-h-48 overflow-y-auto">
-            {transcript.length > 0 && transcript[transcript.length-1].speaker !== 'user' && <p className={cn(
-                "text-xl transition-opacity duration-300",
-                "text-primary/90"
+            {transcript.length > 0 && transcript[transcript.length-1].speaker === 'ai' && <p className={cn(
+                "text-xl transition-opacity duration-300 text-primary/90"
             )}>"{transcript[transcript.length-1].text}"</p>}
              {transcript.length > 0 && transcript[transcript.length-1].speaker === 'user' && transcript[transcript.length-1].text.trim() && <p className={cn(
-                "text-xl transition-opacity duration-300",
-                "text-white"
+                "text-xl transition-opacity duration-300 text-white"
             )}>"{transcript[transcript.length-1].text}"</p>}
         </div>
 
@@ -268,14 +277,14 @@ export default function TherapySession() {
             size="lg" 
             className={cn(
                 "rounded-full w-20 h-20 transition-all duration-300 shadow-lg",
-                 isListening 
-                    ? "bg-primary/90 animate-pulse" 
+                 sessionState === 'listening' 
+                    ? "bg-red-500 hover:bg-red-600"
                     : "bg-primary",
-                isAiSpeaking && "bg-gray-700 opacity-50 cursor-not-allowed"
+                 isMicButtonDisabled && "bg-gray-700 opacity-50 cursor-not-allowed"
             )}
-            disabled={isAiSpeaking}
+            disabled={isMicButtonDisabled}
         >
-            {isListening ? <MicOff className="h-8 w-8"/> : <Mic className="h-8 w-8"/>}
+            {sessionState === 'listening' ? <MicOff className="h-8 w-8"/> : <Mic className="h-8 w-8"/>}
         </Button>
         <Button onClick={() => router.push('/dashboard')} size="lg" variant="destructive" className="rounded-full w-20 h-20">
             <PhoneOff className="h-8 w-8"/>
