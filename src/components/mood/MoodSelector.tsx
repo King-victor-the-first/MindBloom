@@ -1,12 +1,13 @@
 
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore } from "@/firebase";
 import { addDoc, collection, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import MoodTriggerModal from "./MoodTriggerModal";
 import CrisisModeDialog from "./CrisisModeDialog";
+import { useWellnessStore } from "@/lib/data";
 
 const moods = [
   { label: "Awful", emoji: "😩", value: 1 },
@@ -20,7 +21,7 @@ const moods = [
 declare var __app_id: string | undefined;
 
 export default function MoodSelector() {
-  const [selectedMood, setSelectedMood] = useState<string | null>("Good");
+  const { currentMood, setCurrentMood } = useWellnessStore();
   const [isTriggerModalOpen, setIsTriggerModalOpen] = useState(false);
   const [isCrisisModeOpen, setIsCrisisModeOpen] = useState(false);
   const [currentMoodEntryId, setCurrentMoodEntryId] = useState<string | null>(null);
@@ -28,8 +29,16 @@ export default function MoodSelector() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
+  useEffect(() => {
+    // Set initial mood in store if needed, or sync with it.
+    const initialMood = moods.find(m => m.label === currentMood);
+    if (!initialMood) {
+        setCurrentMood("Okay");
+    }
+  }, [currentMood, setCurrentMood]);
+
   const handleMoodSelect = async (mood: (typeof moods)[0]) => {
-    setSelectedMood(mood.label);
+    setCurrentMood(mood.label);
     if (!user) return;
 
     try {
@@ -75,7 +84,7 @@ export default function MoodSelector() {
 
         toast({
             title: "Mood Logged",
-            description: `You've logged your mood as "${selectedMood}".`,
+            description: `You've logged your mood as "${currentMood}".`,
         });
     } catch (error) {
         console.error("Error saving mood trigger:", error);
@@ -111,7 +120,7 @@ export default function MoodSelector() {
             <span
               className={cn(
                 "text-4xl sm:text-5xl grayscale transition-all duration-300 transform hover:scale-110",
-                selectedMood === mood.label && "grayscale-0 scale-125"
+                currentMood === mood.label && "grayscale-0 scale-125"
               )}
             >
               {mood.emoji}
@@ -119,7 +128,7 @@ export default function MoodSelector() {
             <span
               className={cn(
                 "text-xs sm:text-sm font-semibold",
-                selectedMood === mood.label && "text-primary"
+                currentMood === mood.label && "text-primary"
               )}
             >
               {mood.label}

@@ -1,25 +1,25 @@
+
 "use client";
 
 import { useState } from "react";
 import { analyzeMoodFromSteps, AnalyzeMoodFromStepsOutput } from "@/ai/flows/analyze-mood-from-steps";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Footprints } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useWellnessStore } from "@/lib/data";
 
 export default function StepsMoodAnalyzer() {
-  const [steps, setSteps] = useState("");
+  const { steps } = useWellnessStore();
   const [analysis, setAnalysis] = useState<AnalyzeMoodFromStepsOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const handleAnalyze = async () => {
-    const stepCount = parseInt(steps);
-    if (isNaN(stepCount) || stepCount < 0) {
+    if (steps <= 0) {
       toast({
-        title: "Invalid Input",
-        description: "Please enter a valid number of steps.",
+        title: "No Steps Logged",
+        description: "Please enter your steps on the dashboard to get an analysis.",
         variant: "destructive",
       });
       return;
@@ -28,7 +28,7 @@ export default function StepsMoodAnalyzer() {
     setLoading(true);
     setAnalysis(null);
     try {
-      const result = await analyzeMoodFromSteps({ steps: stepCount });
+      const result = await analyzeMoodFromSteps({ steps });
       setAnalysis(result);
     } catch (error) {
       console.error("Error analyzing mood:", error);
@@ -50,23 +50,18 @@ export default function StepsMoodAnalyzer() {
           Mood from Steps
         </CardTitle>
         <CardDescription>
-          See how your physical activity might be influencing your mood.
+          See how your physical activity might be influencing your mood. Your current step count is <span className="font-bold text-primary">{steps.toLocaleString()}</span>.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Input
-            type="number"
-            placeholder="Enter today's step count"
-            value={steps}
-            onChange={(e) => setSteps(e.target.value)}
-            disabled={loading}
-          />
-          <Button onClick={handleAnalyze} disabled={loading} className="sm:w-auto w-full">
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Analyze
-          </Button>
-        </div>
+        <Button onClick={handleAnalyze} disabled={loading} className="w-full">
+            {loading ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing...
+                </>
+            ) : "Analyze My Steps"}
+        </Button>
         {analysis && (
           <div className="mt-4 p-4 bg-muted/50 rounded-lg">
             <h4 className="font-semibold mb-2">AI Analysis:</h4>

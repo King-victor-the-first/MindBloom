@@ -11,6 +11,7 @@ import {
     Volume2, BellRing, Inbox, Folder, File, BarChart2, TrendingUp, Radio, Tv, Monitor, Speaker, MousePointer,
     Save, Upload, Download, Settings, SlidersHorizontal, Brain, Footprints, Calendar, Apple, Target
 } from 'lucide-react';
+import { create } from 'zustand';
 
 export const moodBoosters: MoodBooster[] = [
   // Original & Kindness
@@ -127,3 +128,21 @@ export const moodBoosters: MoodBooster[] = [
   { text: "Charge your devices", icon: BatteryCharging },
   { text: "Plan your meals for the next couple of days", icon: NotebookPen },
 ];
+
+interface WellnessStore {
+  steps: number;
+  setSteps: (steps: number) => void;
+  sleepHours: number;
+  setSleepHours: (hours: number) => void;
+  currentMood: string;
+  setCurrentMood: (mood: string) => void;
+}
+
+export const useWellnessStore = create<WellnessStore>((set) => ({
+  steps: 0,
+  setSteps: (steps) => set({ steps }),
+  sleepHours: 0,
+  setSleepHours: (hours) => set({ sleepHours: hours }),
+  currentMood: 'Okay',
+  setCurrentMood: (mood) => set({ currentMood: mood }),
+}));
