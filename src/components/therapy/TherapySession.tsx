@@ -67,8 +67,19 @@ export default function TherapySession() {
     }
   }, []);
 
+  const startListening = useCallback(() => {
+    if (recognitionRef.current && !isListening && !isAiSpeaking) {
+      try {
+        recognitionRef.current.start();
+      } catch (e) {
+        // This can happen if it's already starting, which is fine.
+      }
+    }
+  }, [isListening, isAiSpeaking]);
+
+
   const handleSpeech = useCallback(async (text: string, isGreeting = false) => {
-    if (!text || (isAiSpeaking && !isGreeting)) return;
+    if (!text || isAiSpeaking) return;
 
     const userMessageText = isGreeting ? " " : text;
     const userMessage: TranscriptItem = { speaker: "user", text: userMessageText };
@@ -80,10 +91,8 @@ export default function TherapySession() {
         ? history 
         : [...history, { role: 'user', content: [{ text }] }];
     
-    // Use a function for setting state to ensure we have the latest version.
     setHistory(currentHistory);
     
-    // Get AI response
     try {
       const result = await therapyConversation({ history: currentHistory, message: text, voiceName: voice });
       const aiMessage: TranscriptItem = { speaker: "ai", text: result.response };
@@ -91,17 +100,15 @@ export default function TherapySession() {
       setTranscript((prev) => [...prev, aiMessage]);
       setHistory((prev) => [...prev, { role: 'model', content: [{ text: result.response }] }]);
       
-      playAudio(result.audio, () => {
-          // This callback runs after the audio finishes.
-          // We always want to start listening again after the AI speaks.
-          if(recognitionRef.current && !isListening) {
-            try {
-                recognitionRef.current.start();
-            } catch(e) {
-                // It might already be started or in a weird state, it's fine.
-            }
-          }
-      });
+      if (result.audio) {
+        playAudio(result.audio, () => {
+            // After audio finishes, start listening again.
+            startListening();
+        });
+      } else {
+        // If there's no audio (e.g., TTS failed), just start listening again.
+        startListening();
+      }
 
     } catch (error) {
       console.error("Error with therapy conversation flow:", error);
@@ -109,19 +116,19 @@ export default function TherapySession() {
       const aiMessage: TranscriptItem = { speaker: "ai", text: errorMessage };
       setTranscript((prev) => [...prev, aiMessage]);
       setHistory((prev) => [...prev, { role: 'model', content: [{text: errorMessage}] }]);
+      startListening(); // Also start listening again on error.
     }
-  }, [history, voice, playAudio, isAiSpeaking, isListening]);
+  }, [history, voice, playAudio, isAiSpeaking, startListening]);
 
 
   // --- Initial Greeting ---
   useEffect(() => {
+    // We want this to run *only* when the disclaimer is dismissed for the first time.
     if (!showDisclaimer && history.length === 0) {
       const initialGreeting = "Hello, I'm Bloom. I'm here to listen. How are you feeling today?";
       // We pass the initial prompt to handleSpeech but mark it as a greeting
       handleSpeech(initialGreeting, true);
     }
-    // We want this to run *only* when the disclaimer is dismissed or history changes from 0.
-    // The handleSpeech function is memoized with useCallback to prevent re-runs.
   }, [showDisclaimer, history.length, handleSpeech]);
 
 
@@ -147,12 +154,7 @@ export default function TherapySession() {
       // Automatically restart listening if the AI is not speaking.
       // This handles cases where recognition stops due to silence.
       if (!isAiSpeaking) {
-        try {
-            recognition.start();
-        } catch(e) {
-            // This can happen if the component unmounts quickly
-            console.warn("Could not restart recognition", e)
-        }
+        startListening();
       }
     };
     
@@ -172,7 +174,6 @@ export default function TherapySession() {
     };
     
     recognition.onresult = (event) => {
-        recognition.stop(); // Stop listening as soon as we have a result
         const finalTranscript = Array.from(event.results)
             .map(result => result[0])
             .map(result => result.transcript)
@@ -184,14 +185,15 @@ export default function TherapySession() {
     };
 
     return () => {
-      recognition?.abort();
-      window.speechSynthesis?.cancel();
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
       if(audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
       }
     };
-  }, [handleSpeech, isAiSpeaking]);
+  }, [handleSpeech, isAiSpeaking, startListening]);
 
   const toggleListen = () => {
     if (isAiSpeaking) return;
@@ -199,7 +201,7 @@ export default function TherapySession() {
     if (isListening) {
       recognitionRef.current?.stop();
     } else {
-      recognitionRef.current?.start();
+      startListening();
     }
   };
 
