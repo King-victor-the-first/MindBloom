@@ -153,8 +153,9 @@ export default function TherapySession() {
       setIsListening(false);
       // Automatically restart listening if the AI is not speaking.
       // This handles cases where recognition stops due to silence.
-      if (!isAiSpeaking) {
-        startListening();
+      if (!isAiSpeaking && recognitionRef.current) {
+        // A small delay can prevent rapid-fire restarts if the 'end' event fires prematurely.
+        setTimeout(() => startListening(), 100);
       }
     };
     
@@ -207,6 +208,8 @@ export default function TherapySession() {
 
   const handleDisclaimerAgree = () => {
       setShowDisclaimer(false);
+      // Directly start listening after disclaimer is agreed to.
+      startListening();
   }
 
 
@@ -281,3 +284,5 @@ export default function TherapySession() {
     </div>
   );
 }
+
+    
