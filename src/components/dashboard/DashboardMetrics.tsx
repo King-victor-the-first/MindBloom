@@ -30,7 +30,7 @@ export default function DashboardMetrics() {
     const handleStepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value, 10);
         if (!isNaN(value)) {
-            setLocalSteps(value);
+            setLocalSteps(Math.max(0, value));
         } else if (e.target.value === '') {
             setLocalSteps(0);
         }
@@ -73,6 +73,7 @@ export default function DashboardMetrics() {
                     <div className="flex items-center gap-2">
                         <Input 
                             type="number" 
+                            min="0"
                             value={localSteps}
                             onChange={handleStepChange}
                             className="h-9"
