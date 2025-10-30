@@ -14,17 +14,13 @@ type SafetyPlanDisplayProps = {
     onDone: () => void;
 }
 
-// These variables are expected to be globally available in the Firebase Hosting environment.
-declare var __app_id: string | undefined;
-
 export default function SafetyPlanDisplay({ onDone }: SafetyPlanDisplayProps) {
   const { user } = useUser();
   const firestore = useFirestore();
 
   const safetyPlanRef = useMemoFirebase(() => {
     if (!user) return null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    return doc(firestore, `artifacts/${appId}/users/${user.uid}/safetyPlan/userPlan`);
+    return doc(firestore, `userProfiles/${user.uid}/safetyPlan/userPlan`);
   }, [user, firestore]);
 
   const { data: safetyPlan, isLoading } = useDoc<SafetyPlan>(safetyPlanRef);

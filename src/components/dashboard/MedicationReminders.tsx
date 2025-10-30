@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo } from 'react';
@@ -21,18 +22,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-// These variables are expected to be globally available in the Firebase Hosting environment.
-declare var __app_id: string | undefined;
-
 export default function MedicationReminders() {
   const { user } = useUser();
   const firestore = useFirestore();
 
   const medicationsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     return query(
-        collection(firestore, `artifacts/${appId}/users/${user.uid}/medications`),
+        collection(firestore, `userProfiles/${user.uid}/medications`),
         orderBy("time", "asc")
     );
   }, [user, firestore]);
@@ -41,8 +38,7 @@ export default function MedicationReminders() {
 
   const handleDelete = (medicationId: string) => {
     if (!user) return;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const docRef = doc(firestore, `artifacts/${appId}/users/${user.uid}/medications`, medicationId);
+    const docRef = doc(firestore, `userProfiles/${user.uid}/medications`, medicationId);
     deleteDocumentNonBlocking(docRef);
   };
   

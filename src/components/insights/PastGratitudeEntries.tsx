@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -17,10 +18,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-
-// These variables are expected to be globally available in the Firebase Hosting environment.
-declare var __app_id: string | undefined;
-
 export default function PastGratitudeEntries() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -30,9 +27,8 @@ export default function PastGratitudeEntries() {
 
   const journalQuery = useMemoFirebase(() => {
     if (!user) return null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     return query(
-      collection(firestore, `artifacts/${appId}/users/${user.uid}/gratitudeJournal`),
+      collection(firestore, `userProfiles/${user.uid}/gratitudeJournal`),
       orderBy('createdAt', 'desc')
     );
   }, [user, firestore]);

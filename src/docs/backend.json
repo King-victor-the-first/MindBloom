@@ -203,25 +203,25 @@
       },
       "description": "Stores public profile information for a user."
     },
-    "/artifacts/{appId}/users/{userId}/moodEntries/{entryId}": {
+    "/userProfiles/{userId}/moodEntries/{entryId}": {
         "schema": {
             "$ref": "#/entities/MoodEntry"
         },
         "description": "Stores a user's mood entries over time."
     },
-    "/artifacts/{appId}/users/{userId}/gratitudeJournal/{YYYY-MM-DD}": {
+    "/userProfiles/{userId}/gratitudeJournal/{YYYY-MM-DD}": {
         "schema": {
             "$ref": "#/entities/GratitudeEntry"
         },
         "description": "Stores a user's daily gratitude journal entries."
     },
-    "/artifacts/{appId}/users/{userId}/safetyPlan/userPlan": {
+    "/userProfiles/{userId}/safetyPlan/userPlan": {
         "schema": {
             "$ref": "#/entities/SafetyPlan"
         },
-        "description": "A single document containing the user's safety plan, following the standardized artifact path."
+        "description": "A single document containing the user's safety plan."
     },
-    "/artifacts/{appId}/users/{userId}/medications/{medicationId}": {
+    "/userProfiles/{userId}/medications/{medicationId}": {
       "schema": {
         "$ref": "#/entities/Medication"
       },

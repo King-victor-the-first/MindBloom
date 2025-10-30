@@ -17,9 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, User, LifeBuoy, ShieldCheck, PlusCircle } from "lucide-react";
 import { Separator } from "../ui/separator";
 
-// These variables are expected to be globally available in the Firebase Hosting environment.
-declare var __app_id: string | undefined;
-
 const contactSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Name is required"),
@@ -45,8 +42,7 @@ export default function SafetyPlanForm() {
   
   const safetyPlanRef = useMemoFirebase(() => {
     if (!user) return null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const docPath = `artifacts/${appId}/users/${user.uid}/safetyPlan/userPlan`;
+    const docPath = `userProfiles/${user.uid}/safetyPlan/userPlan`;
     return doc(firestore, docPath);
   }, [user, firestore]);
   
@@ -214,5 +210,4 @@ export default function SafetyPlanForm() {
     </Card>
   );
 }
-
     

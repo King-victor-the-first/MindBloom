@@ -17,9 +17,6 @@ const moods = [
   { label: "Great", emoji: "😄", value: 5 },
 ];
 
-// These variables are expected to be globally available in the Firebase Hosting environment.
-declare var __app_id: string | undefined;
-
 export default function MoodSelector() {
   const { currentMood, setCurrentMood } = useWellnessStore();
   const [isTriggerModalOpen, setIsTriggerModalOpen] = useState(false);
@@ -48,8 +45,7 @@ export default function MoodSelector() {
         createdAt: serverTimestamp(),
       };
       
-      const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-      const moodEntriesRef = collection(firestore, `artifacts/${appId}/users/${user.uid}`, "moodEntries");
+      const moodEntriesRef = collection(firestore, `userProfiles/${user.uid}`, "moodEntries");
       const docRef = await addDoc(moodEntriesRef, moodEntry);
       
       setCurrentMoodEntryId(docRef.id);
@@ -74,8 +70,7 @@ export default function MoodSelector() {
     if (!user || !currentMoodEntryId) return;
 
     try {
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const moodEntryRef = doc(firestore, `artifacts/${appId}/users/${user.uid}/moodEntries`, currentMoodEntryId);
+        const moodEntryRef = doc(firestore, `userProfiles/${user.uid}/moodEntries`, currentMoodEntryId);
         const updateData: { trigger: string; triggerNote?: string } = { trigger };
         if (note) {
             updateData.triggerNote = note;

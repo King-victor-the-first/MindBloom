@@ -13,18 +13,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui
 const MOCK_SLEEP_HOURS = [7.5, 6, 8, 5, 7, 8.5, 6.5]; // last 7 days
 const MOCK_STEP_COUNT = [8000, 5000, 9000, 12000, 4000, 6500, 10000, 3000, 7500, 11000, 8500, 9500, 5500, 7200]; // last 14 days
 
-// These variables are expected to be globally available in the Firebase Hosting environment.
-declare var __app_id: string | undefined;
-
 export default function InsightCards() {
   const { user } = useUser();
   const firestore = useFirestore();
 
   const mood7DaysQuery = useMemoFirebase(() => {
     if (!user) return null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     return query(
-      collection(firestore, `artifacts/${appId}/users/${user.uid}/moodEntries`),
+      collection(firestore, `userProfiles/${user.uid}/moodEntries`),
       where('createdAt', '>=', subDays(new Date(), 7)),
       orderBy('createdAt', 'desc')
     );
@@ -32,9 +28,8 @@ export default function InsightCards() {
 
   const mood30DaysQuery = useMemoFirebase(() => {
     if (!user) return null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     return query(
-      collection(firestore, `artifacts/${appId}/users/${user.uid}/moodEntries`),
+      collection(firestore, `userProfiles/${user.uid}/moodEntries`),
       where('createdAt', '>=', subDays(new Date(), 30)),
       orderBy('createdAt', 'desc')
     );

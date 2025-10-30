@@ -31,9 +31,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2 } from "lucide-react";
 
-// These variables are expected to be globally available in the Firebase Hosting environment.
-declare var __app_id: string | undefined;
-
 const medicationSchema = z.object({
   name: z.string().min(1, "Medication name is required."),
   dosage: z.string().min(1, "Dosage is required (e.g., '10mg', '1 pill')."),
@@ -65,8 +62,7 @@ export default function AddMedicationSheet({ triggerButton }: AddMedicationSheet
     if (!user) return;
     
     try {
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const medicationsCollectionRef = collection(firestore, `artifacts/${appId}/users/${user.uid}/medications`);
+        const medicationsCollectionRef = collection(firestore, `userProfiles/${user.uid}/medications`);
         await addDocumentNonBlocking(medicationsCollectionRef, values);
 
         toast({
