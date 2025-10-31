@@ -1,5 +1,6 @@
 MindBloom: The Proactive AI Mental Health Wellness Companion.
- Access MindBloom through: 
+
+Access MindBloom through: 
                           https://studio--studio-8972653883-d4ab8.us-central1.hosted.app/
                           or
                           https://mindbloomapp.vercel.app 
