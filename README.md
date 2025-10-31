@@ -1,5 +1,6 @@
 MindBloom: The Proactive AI Mental Health Wellness Companion.
-Access MindBloom through https://mindbloomapp.vercel.app 
+Access MindBloom through: https://studio--studio-8972653883-d4ab8.us-central1.hosted.app/
+                          https://mindbloomapp.vercel.app 
 
 <b>MindBloom</b> is a dedicated mental wellness companion tackling the escalating mental health crisis faced by university students, particularly those under immense academic and financial stress who lack access to affordable, confidential support. We directly solve the barriers of high cost and long wait times by offering the Gemini AI Voice Therapist, available 24/7 for realistic, empathetic voice-based therapy sessions.
 
