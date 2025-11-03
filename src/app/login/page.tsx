@@ -269,7 +269,7 @@ export default function LoginPage() {
             <CardHeader>
               <CardTitle>Welcome Back</CardTitle>
               <CardDescription>
-                Sign in to your MindBloom account to continue.
+                Sign in to your MindBud account to continue.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

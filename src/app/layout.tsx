@@ -6,7 +6,7 @@ import { FirebaseClientProvider } from '@/firebase';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
-  title: 'MindBloom MVP',
+  title: 'MindBud MVP',
   description: 'Your personal AI therapy and wellness companion.',
 };
 

@@ -14,9 +14,9 @@
     },
     {
       "id": "app-logo",
-      "description": "The MindBloom application logo",
+      "description": "The MindBud application logo",
       "imageUrl": "/mindbloomlogo.png",
-      "imageHint": "NindBloom logo"
+      "imageHint": "MindBud logo"
     }
   ]
 }
