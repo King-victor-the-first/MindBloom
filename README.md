@@ -1,6 +1,7 @@
 MindBud: The Proactive AI Mental Health Wellness Companion.
 Access MindBud through 
-https://studio--studio-8972653883-d4ab8.us-central1.hosted.app/dashboard 
+https://studio--studio-8972653883-d4ab8.us-central1.hosted.app/dashboard or
+https://mindbud.vercel.app
 =======
 MindBud: The Proactive AI Mental Health Wellness Companion.
 
