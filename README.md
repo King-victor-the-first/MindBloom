@@ -1,13 +1,13 @@
 <<<<<<< HEAD
 MindBud: The Proactive AI Mental Health Wellness Companion.
-Access MindBud through https://mindbudapp.vercel.app 
+Access MindBud through https://mindbud.vercel.app 
 =======
-MindBloom: The Proactive AI Mental Health Wellness Companion.
+MindBud: The Proactive AI Mental Health Wellness Companion.
 
-Access MindBloom through: 
+Access MindBud through: 
                           https://studio--studio-8972653883-d4ab8.us-central1.hosted.app
                           or
-                          https://mindbloomapp.vercel.app 
+                          https://mindbud.vercel.app
                          
 
 >>>>>>> 483a3a255baec19d1d3d471a5a821c529743bc1b
