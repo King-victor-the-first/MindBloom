@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 MindBud: The Proactive AI Mental Health Wellness Companion.
 Access MindBud through https://mindbud.vercel.app 
 =======
@@ -9,8 +8,6 @@ Access MindBud through:
                           or
                           https://mindbud.vercel.app
                          
-
->>>>>>> 483a3a255baec19d1d3d471a5a821c529743bc1b
 
 <b>MindBud</b> is a dedicated mental wellness companion tackling the escalating mental health crisis faced by university students, particularly those under immense academic and financial stress who lack access to affordable, confidential support. We directly solve the barriers of high cost and long wait times by offering the Gemini AI Voice Therapist, available 24/7 for realistic, empathetic voice-based therapy sessions.
 
